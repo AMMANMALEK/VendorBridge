@@ -1,20 +1,19 @@
 import React, { useState } from 'react';
 import { useAppState } from '../context/StateContext';
-import Sidebar from '../components/Sidebar';
-import Header from '../components/Header';
+import Layout from '../components/Layout';
 
 const ROLES = [
-  { value: 'admin',   label: 'Administrator',        symbol: '👑' },
-  { value: 'officer', label: 'Procurement Officer',   symbol: '📋' },
-  { value: 'manager', label: 'Manager / Approver',    symbol: '✅' },
-  { value: 'vendor',  label: 'Vendor',                symbol: '🏭' }
+  { value: 'admin',   label: 'Administrator',        symbol: 'shield_person', color: 'text-purple-600 bg-purple-100' },
+  { value: 'officer', label: 'Procurement Officer',   symbol: 'badge',         color: 'text-blue-600 bg-blue-100' },
+  { value: 'manager', label: 'Manager / Approver',    symbol: 'verified_user', color: 'text-emerald-600 bg-emerald-100' },
+  { value: 'vendor',  label: 'Vendor',                symbol: 'business',      color: 'text-amber-600 bg-amber-100' },
 ];
 
 const ROLE_COLORS = {
   admin:   'bg-purple-100 text-purple-700',
   officer: 'bg-blue-100 text-blue-700',
-  manager: 'bg-green-100 text-green-700',
-  vendor:  'bg-orange-100 text-orange-700'
+  manager: 'bg-emerald-100 text-emerald-700',
+  vendor:  'bg-amber-100 text-amber-700',
 };
 
 const AdminUserManagement = () => {
@@ -84,22 +83,19 @@ const AdminUserManagement = () => {
   }, {});
 
   return (
-    <div className="flex min-h-screen bg-[#F7F9FC]">
-      <Sidebar />
-
-      <div className="flex-1 ml-sidebar_width pt-header_height min-h-screen flex flex-col">
-        <Header title="User Management" />
-
-        <main className="p-xl max-w-container_max_width w-full mx-auto flex-1 flex flex-col gap-lg animate-fade-in">
+    <Layout title="User Management">
+      <div className="max-w-[1400px] mx-auto space-y-5">
 
           {/* Stats row */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-md">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {ROLES.map(r => (
-              <div key={r.value} className="bg-white rounded-xl border border-outline-variant custom-shadow p-md flex items-center gap-md">
-                <span className="text-2xl">{r.symbol}</span>
+              <div key={r.value} className="card p-4 flex items-center gap-3">
+                <div className={`w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 ${r.color}`}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 22 }}>{r.symbol}</span>
+                </div>
                 <div>
-                  <p className="font-bold text-[22px] text-on-surface leading-none">{roleCounts[r.value] || 0}</p>
-                  <p className="text-xs text-on-surface-variant mt-0.5">{r.label}</p>
+                  <p className="font-bold text-[26px] text-slate-800 leading-none">{roleCounts[r.value] || 0}</p>
+                  <p className="text-[12px] text-slate-400 mt-0.5">{r.label}</p>
                 </div>
               </div>
             ))}
@@ -153,28 +149,32 @@ const AdminUserManagement = () => {
                       >
                         <td className="px-lg py-md">
                           <div className="flex items-center gap-sm">
-                            <div className="w-8 h-8 rounded-full bg-primary-container/20 flex items-center justify-center text-[16px]">
-                              {u.symbol || '👤'}
+                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${ROLE_COLORS[u.role] || 'bg-slate-100 text-slate-500'}`}>
+                              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
+                                {ROLES.find(r => r.value === u.role)?.symbol || 'person'}
+                              </span>
                             </div>
                             <span className="font-semibold text-[14px]">{u.name}</span>
                             {u.id === currentUser?.id && (
-                              <span className="text-[10px] bg-primary text-white px-1.5 py-0.5 rounded font-semibold">You</span>
+                              <span className="text-[10px] bg-indigo-600 text-white px-1.5 py-0.5 rounded font-semibold">You</span>
                             )}
                           </div>
                         </td>
                         <td className="px-lg py-md text-[13px] text-on-surface-variant">{u.email}</td>
                         <td className="px-lg py-md">
-                          <span className={`px-sm py-0.5 rounded-full text-[11px] font-semibold ${ROLE_COLORS[u.role] || 'bg-surface-variant text-on-surface-variant'}`}>
-                            {u.symbol} {u.roleLabel || u.role}
+                          <span className={`px-sm py-0.5 rounded-full text-[11px] font-semibold flex items-center gap-1 w-fit ${ROLE_COLORS[u.role] || 'bg-surface-variant text-on-surface-variant'}`}>
+                            <span className="material-symbols-outlined" style={{ fontSize: 12 }}>{ROLES.find(r => r.value === u.role)?.symbol || 'person'}</span>
+                            {u.roleLabel || u.role}
                           </span>
                         </td>
                         <td className="px-lg py-md">
-                          <span className={`px-sm py-0.5 rounded-full text-[11px] font-semibold ${
-                            u.status === 'Inactive'
-                              ? 'bg-error-container text-on-error-container'
-                              : 'bg-emerald-100 text-emerald-700'
+                          <span className={`px-sm py-0.5 rounded-full text-[11px] font-semibold flex items-center gap-1 w-fit ${
+                            u.status === 'Inactive' ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'
                           }`}>
-                            {u.status === 'Inactive' ? '⛔ Inactive' : '✅ Active'}
+                            <span className="material-symbols-outlined" style={{ fontSize: 12, fontVariationSettings: "'FILL' 1" }}>
+                              {u.status === 'Inactive' ? 'cancel' : 'check_circle'}
+                            </span>
+                            {u.status === 'Inactive' ? 'Inactive' : 'Active'}
                           </span>
                         </td>
                       </tr>
@@ -303,16 +303,15 @@ const AdminUserManagement = () => {
               </aside>
             )}
           </div>
-        </main>
       </div>
 
       {/* Toast */}
       {toast && (
-        <div className="fixed bottom-xl left-1/2 -translate-x-1/2 bg-inverse-surface text-inverse-on-surface px-lg py-sm rounded-full text-[13px] font-semibold shadow-lg z-50 animate-fade-in">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-5 py-2.5 rounded-full text-[13px] font-semibold shadow-lg z-50 animate-fade-in">
           {toast}
         </div>
       )}
-    </div>
+    </Layout>
   );
 };
 

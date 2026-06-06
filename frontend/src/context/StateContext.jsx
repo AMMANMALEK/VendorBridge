@@ -405,10 +405,37 @@ export const StateProvider = ({ children }) => {
     }));
     if (!targetApproval) return;
     addLog(`Rejected ${targetApproval.type}: ${targetApproval.title}${remark ? ` — Reason: "${remark}"` : ''}`, 'Approvals');
+
     if (targetApproval.type === 'Quotation Approval') {
-      setQuotations(prev => prev.map(q => q.id === targetApproval.sourceId ? { ...q, status: 'Rejected' } : q));
+      // Reset quotation back to 'Pending' so officer can re-select from comparison
+      setQuotations(prev => prev.map(q =>
+        q.id === targetApproval.sourceId
+          ? { ...q, status: 'Pending', rejectionRemark: remark, rejectedBy: user?.name, rejectedAt: new Date().toISOString() }
+          : q
+      ));
+      // Create a "Returned" notification visible to the officer
+      const returnNotif = {
+        id: `RET-${Date.now()}`,
+        type: 'Returned to Officer',
+        sourceId: targetApproval.sourceId,
+        rfqId: (() => { const q = quotations.find(q => q.id === targetApproval.sourceId); return q ? q.rfqId : ''; })(),
+        rfqTitle: (() => { const q = quotations.find(q => q.id === targetApproval.sourceId); return q ? q.rfqTitle : ''; })(),
+        title: `${targetApproval.title} — Returned`,
+        requester: targetApproval.requester,
+        amount: targetApproval.amount,
+        status: 'Action Required',
+        rejectionRemark: remark,
+        rejectedBy: user?.name,
+        date: new Date().toISOString().split('T')[0],
+      };
+      setApprovals(prev => [returnNotif, ...prev]);
+      addLog(`Quotation returned to officer for revision. Reason: "${remark}"`, 'Approvals');
     } else if (targetApproval.type === 'Purchase Order') {
-      setPos(prev => prev.map(p => p.id === targetApproval.sourceId ? { ...p, status: 'Rejected' } : p));
+      setPos(prev => prev.map(p =>
+        p.id === targetApproval.sourceId
+          ? { ...p, status: 'Rejected', rejectionRemark: remark, rejectedBy: user?.name }
+          : p
+      ));
     }
   };
 
@@ -416,6 +443,44 @@ export const StateProvider = ({ children }) => {
     setInvoices(prev => prev.map(i => i.id === invoiceId ? { ...i, status: 'Paid' } : i));
     const inv = invoices.find(i => i.id === invoiceId);
     if (inv) addLog(`Paid Invoice ${invoiceId} of amount ₹${inv.amount}`, 'Invoice');
+  };
+
+  // Officer dismisses a "Returned to Officer" notification after reading
+  const dismissReturnNotif = (notifId) => {
+    setApprovals(prev => prev.map(a =>
+      a.id === notifId ? { ...a, status: 'Dismissed' } : a
+    ));
+  };
+
+  // Officer resubmits the same quotation after addressing the rejection
+  const resubmitForApproval = (quoteId) => {
+    const quote = quotations.find(q => q.id === quoteId);
+    if (!quote) return;
+    // Clear rejection metadata from quotation
+    setQuotations(prev => prev.map(q =>
+      q.id === quoteId
+        ? { ...q, status: 'Pending', rejectionRemark: null, rejectedBy: null, rejectedAt: null }
+        : q
+    ));
+    // Dismiss any active "Returned" notification for this quote
+    setApprovals(prev => prev.map(a =>
+      a.type === 'Returned to Officer' && a.sourceId === quoteId ? { ...a, status: 'Dismissed' } : a
+    ));
+    // Create a brand-new Quotation Approval for the manager
+    const newApproval = {
+      id: `APP-${Date.now()}`,
+      type: 'Quotation Approval',
+      sourceId: quoteId,
+      title: `${quote.vendorName} - ${quote.rfqTitle} Quote (Resubmitted)`,
+      requester: user ? user.name : 'System',
+      amount: quote.amount,
+      status: 'Pending',
+      date: new Date().toISOString().split('T')[0],
+      isResubmission: true,
+    };
+    setApprovals(prev => [newApproval, ...prev]);
+    addLog(`Officer resubmitted quotation ${quoteId} for manager approval`, 'Approvals');
+    return newApproval;
   };
 
   // ─── User Management (Admin only) ───────────────────────────────────────────
@@ -452,6 +517,7 @@ export const StateProvider = ({ children }) => {
       login, logout, registerVendor, registerCompany,
       addVendor, updateVendorStatus, addRFQ, generateInvoice, addQuotation,
       approveQuotation, approveApproval, rejectApproval, payInvoice,
+      dismissReturnNotif, resubmitForApproval,
       updateUserRole, deactivateUser, resetUserPassword
     }}>
       {children}

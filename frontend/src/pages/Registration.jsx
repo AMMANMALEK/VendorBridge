@@ -2,221 +2,344 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAppState } from '../context/StateContext';
 
-const Registration = () => {
-  const { registerVendor } = useAppState();
-  const [formData, setFormData] = useState({
-    fullName: '',
-    companyName: '',
-    email: '',
-    password: '',
-    phone: '',
-    category: 'Logistics',
-    country: 'India',
-    additionalInfo: '',
-    agree: false
-  });
-  const [showPassword, setShowPassword] = useState(false);
-  const navigate = useNavigate();
+const CATEGORIES = ['Logistics','IT Hardware','Office Supplies','Industrial Parts','Construction','Professional Services','Software & SaaS'];
+const COUNTRIES  = ['India','United States','United Kingdom','Singapore','Germany','Japan','UAE','Australia'];
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!formData.agree) {
-      alert('Please agree to the Terms of Service and Privacy Policy.');
-      return;
-    }
-    if (formData.password.length < 8) {
-      alert('Password must be at least 8 characters.');
-      return;
-    }
-    registerVendor(formData);
-    alert(`Vendor account created successfully!\n\nYou can now log in with:\nEmail: ${formData.email}\nPassword: ${formData.password}\n\nYour account is pending Admin verification.`);
+const PERKS = [
+  { icon: 'verified',             t: 'Verified Buyer Network',  d: 'Connect with 500+ certified enterprise buyers.' },
+  { icon: 'notifications_active', t: 'Instant RFQ Matching',    d: 'Auto-matched alerts the moment RFQs go live.' },
+  { icon: 'payments',             t: 'Faster Payments',         d: 'Track every invoice and payment in real time.' },
+  { icon: 'analytics',            t: 'Business Analytics',      d: 'Win-rate & bidding performance dashboards.' },
+];
+
+/* ─── tiny input ───────────────────────────────────────────────────────────── */
+function Inp({ icon, type='text', placeholder, value, onChange, hasErr, right, extraPr=14 }) {
+  return (
+    <div style={{ position:'relative' }}>
+      {icon && <span className="material-symbols-outlined" style={{ position:'absolute', left:11, top:'50%', transform:'translateY(-50%)', fontSize:16, color:'#94A3B8', pointerEvents:'none' }}>{icon}</span>}
+      <input
+        type={type} placeholder={placeholder} value={value} required={false}
+        onChange={onChange}
+        style={{
+          width:'100%', height:40, paddingLeft: icon ? 36 : 12, paddingRight: extraPr,
+          border:`1.5px solid ${hasErr ? '#FCA5A5' : '#E2E8F0'}`,
+          borderRadius:9, fontSize:13, color:'#0F172A',
+          background: hasErr ? '#FEF2F2' : '#F8FAFC',
+          outline:'none', boxSizing:'border-box', fontFamily:'Inter,sans-serif',
+          transition:'all .15s',
+        }}
+        onFocus={e => { e.target.style.borderColor='#6366F1'; e.target.style.background='#fff'; e.target.style.boxShadow='0 0 0 3px rgba(99,102,241,.1)'; }}
+        onBlur={e  => { e.target.style.borderColor=hasErr?'#FCA5A5':value?'#6366F1':'#E2E8F0'; e.target.style.background=hasErr?'#FEF2F2':'#F8FAFC'; e.target.style.boxShadow='none'; }}
+      />
+      {right}
+    </div>
+  );
+}
+
+function Sel({ icon, value, onChange, children }) {
+  return (
+    <div style={{ position:'relative' }}>
+      {icon && <span className="material-symbols-outlined" style={{ position:'absolute', left:11, top:'50%', transform:'translateY(-50%)', fontSize:16, color:'#94A3B8', pointerEvents:'none', zIndex:1 }}>{icon}</span>}
+      <select value={value} onChange={onChange}
+        style={{ width:'100%', height:40, paddingLeft:icon?36:12, paddingRight:30, border:'1.5px solid #E2E8F0', borderRadius:9, fontSize:13, color:'#0F172A', background:'#F8FAFC', outline:'none', boxSizing:'border-box', appearance:'none', cursor:'pointer', fontFamily:'Inter,sans-serif', transition:'all .15s' }}
+        onFocus={e => { e.target.style.borderColor='#6366F1'; e.target.style.boxShadow='0 0 0 3px rgba(99,102,241,.1)'; }}
+        onBlur={e  => { e.target.style.borderColor='#E2E8F0'; e.target.style.boxShadow='none'; }}
+      >{children}</select>
+      <span className="material-symbols-outlined" style={{ position:'absolute', right:10, top:'50%', transform:'translateY(-50%)', fontSize:15, color:'#94A3B8', pointerEvents:'none' }}>expand_more</span>
+    </div>
+  );
+}
+
+const LBL = { display:'block', fontSize:11, fontWeight:700, color:'#64748B', marginBottom:5, letterSpacing:'.04em', textTransform:'uppercase' };
+const ERR = { marginTop:4, fontSize:11, color:'#EF4444', display:'flex', alignItems:'center', gap:3 };
+
+export default function Registration() {
+  const { registerVendor } = useAppState();
+  const navigate           = useNavigate();
+
+  const [form, setForm] = useState({
+    fullName:'', companyName:'', email:'', phone:'',
+    password:'', confirmPassword:'',
+    category:'Logistics', country:'India', agree:false,
+  });
+  const [showP,    setShowP]    = useState(false);
+  const [showC,    setShowC]    = useState(false);
+  const [errors,   setErrors]   = useState({});
+  const [loading,  setLoading]  = useState(false);
+
+  const set = f => e => setForm(p => ({ ...p, [f]: e.target.type==='checkbox' ? e.target.checked : e.target.value }));
+  const clrErr = f => e => { set(f)(e); if(errors[f]) setErrors(p=>({...p,[f]:''})); };
+
+  const validate = () => {
+    const e = {};
+    if (!form.fullName.trim())    e.fullName    = 'Required';
+    if (!form.companyName.trim()) e.companyName = 'Required';
+    if (!form.email.trim())       e.email       = 'Required';
+    if (form.password.length < 8) e.password    = 'Min. 8 chars';
+    if (form.password !== form.confirmPassword) e.confirmPassword = 'Mismatch';
+    if (!form.agree)              e.agree       = 'Accept terms to continue';
+    setErrors(e);
+    return !Object.keys(e).length;
+  };
+
+  const handleSubmit = async ev => {
+    ev.preventDefault();
+    if (!validate()) return;
+    setLoading(true);
+    await new Promise(r => setTimeout(r, 550));
+    registerVendor(form);
+    setLoading(false);
     navigate('/login');
   };
 
-  const set = (field) => (e) => setFormData({ ...formData, [field]: e.target.value });
-
   return (
-    <main className="flex min-h-screen w-full animate-fade-in bg-[#f9f9ff]">
-      {/* Sidebar Panel */}
-      <section className="hidden lg:flex lg:w-[40%] flex-col justify-between p-xl bg-on-primary-fixed relative overflow-hidden text-white">
-        <div className="absolute inset-0 opacity-10 pointer-events-none">
-          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary rounded-full blur-[100px] -translate-y-1/3 translate-x-1/4"></div>
-          <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-secondary-fixed-dim rounded-full blur-[80px] translate-y-1/3 -translate-x-1/4"></div>
-        </div>
-        <div className="relative z-10">
-          <div className="flex items-center gap-sm">
-            <div className="w-10 h-10 bg-primary flex items-center justify-center rounded-lg">
-              <span className="material-symbols-outlined text-white text-[28px]">hub</span>
-            </div>
-            <span className="font-h1 text-h1 text-white tracking-tight">VendorBridge</span>
+    <div style={{ display:'flex', height:'100vh', overflow:'hidden', fontFamily:'Inter,sans-serif' }}>
+
+      {/* ══════ LEFT PANEL ══════ */}
+      <div className="reg-left" style={{
+        width:'36%', flexShrink:0, position:'relative', overflow:'hidden',
+        background:'linear-gradient(150deg,#0D0B26 0%,#1B1760 55%,#1E1B4B 100%)',
+        display:'flex', flexDirection:'column', padding:'32px 36px',
+      }}>
+        {/* Glow */}
+        <div style={{ position:'absolute', top:-80, right:-60, width:380, height:380, borderRadius:'50%', background:'radial-gradient(circle,rgba(99,102,241,.38) 0%,transparent 70%)', filter:'blur(55px)', pointerEvents:'none' }} />
+        <div style={{ position:'absolute', bottom:'5%', left:-50, width:280, height:280, borderRadius:'50%', background:'radial-gradient(circle,rgba(139,92,246,.28) 0%,transparent 70%)', filter:'blur(60px)', pointerEvents:'none' }} />
+        <div style={{ position:'absolute', inset:0, backgroundImage:'radial-gradient(rgba(255,255,255,.06) 1px,transparent 1px)', backgroundSize:'26px 26px', pointerEvents:'none' }} />
+
+        {/* Logo */}
+        <div style={{ position:'relative', zIndex:2, display:'flex', alignItems:'center', gap:12, flexShrink:0 }}>
+          <div style={{ width:38, height:38, borderRadius:11, background:'linear-gradient(135deg,#6366F1,#8B5CF6)', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 8px 22px rgba(99,102,241,.55)' }}>
+            <span className="material-symbols-outlined" style={{ fontSize:20, color:'#fff' }}>hub</span>
+          </div>
+          <div>
+            <div style={{ color:'#fff', fontWeight:800, fontSize:15, letterSpacing:'-.3px' }}>VendorBridge</div>
+            <div style={{ color:'rgba(255,255,255,.35)', fontSize:10, letterSpacing:'.05em' }}>VENDOR PORTAL</div>
           </div>
         </div>
-        <div className="relative z-10 max-w-md my-auto">
-          <h2 className="font-h1 text-h1 text-white mb-md leading-tight text-[28px]">
-            Join as a Vendor Partner
-          </h2>
-          <p className="font-body-md text-white/70 mb-xl text-[14px]">
-            Register your business to receive RFQs, submit quotations, and grow your supply chain partnerships.
+
+        {/* Hero */}
+        <div style={{ flex:1, position:'relative', zIndex:2, display:'flex', flexDirection:'column', justifyContent:'center' }}>
+          <div style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'5px 13px', borderRadius:100, background:'rgba(99,102,241,.18)', border:'1px solid rgba(99,102,241,.35)', width:'fit-content', marginBottom:18 }}>
+            <span style={{ width:6, height:6, borderRadius:'50%', background:'#818CF8', display:'inline-block' }} />
+            <span style={{ color:'#A5B4FC', fontSize:11, fontWeight:600 }}>Open to all vendor partners</span>
+          </div>
+          <h1 style={{ color:'#fff', fontSize:28, fontWeight:800, lineHeight:1.2, margin:'0 0 12px', letterSpacing:'-.5px' }}>
+            Join our verified<br/>
+            <span style={{ background:'linear-gradient(90deg,#818CF8,#C084FC)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>vendor network</span>
+          </h1>
+          <p style={{ color:'rgba(255,255,255,.5)', fontSize:13, lineHeight:1.65, maxWidth:280, margin:'0 0 24px' }}>
+            Register to receive RFQ invitations, submit quotations, and build lasting procurement partnerships.
           </p>
-          <div className="space-y-md">
-            <div className="flex items-start gap-md">
-              <span className="material-symbols-outlined text-primary-fixed-dim mt-0.5">verified</span>
-              <div>
-                <h4 className="font-semibold text-white text-[14px]">Verified Procurement Network</h4>
-                <p className="text-white/60 text-xs mt-0.5">Connect with certified enterprise buyers.</p>
+
+          {/* Perks */}
+          <div style={{ display:'flex', flexDirection:'column', gap:9 }}>
+            {PERKS.map(p => (
+              <div key={p.icon} style={{ display:'flex', alignItems:'flex-start', gap:12, padding:'11px 14px', borderRadius:12, background:'rgba(255,255,255,.05)', border:'1px solid rgba(255,255,255,.08)' }}>
+                <div style={{ width:30, height:30, borderRadius:8, background:'rgba(99,102,241,.25)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                  <span className="material-symbols-outlined" style={{ fontSize:15, color:'#A5B4FC' }}>{p.icon}</span>
+                </div>
+                <div>
+                  <div style={{ color:'#fff', fontWeight:600, fontSize:12, lineHeight:1.3 }}>{p.t}</div>
+                  <div style={{ color:'rgba(255,255,255,.4)', fontSize:11, marginTop:2, lineHeight:1.4 }}>{p.d}</div>
+                </div>
               </div>
-            </div>
-            <div className="flex items-start gap-md">
-              <span className="material-symbols-outlined text-primary-fixed-dim mt-0.5">dynamic_feed</span>
-              <div>
-                <h4 className="font-semibold text-white text-[14px]">Real-Time RFQ Notifications</h4>
-                <p className="text-white/60 text-xs mt-0.5">Get instant alerts when matching RFQs are published.</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-md">
-              <span className="material-symbols-outlined text-primary-fixed-dim mt-0.5">account_balance_wallet</span>
-              <div>
-                <h4 className="font-semibold text-white text-[14px]">Fast Payment Processing</h4>
-                <p className="text-white/60 text-xs mt-0.5">Track invoices and receive payments on time.</p>
-              </div>
-            </div>
+            ))}
           </div>
-          <div className="mt-xl p-md bg-white/10 rounded-lg border border-white/20">
-            <p className="text-white/80 text-xs font-semibold uppercase tracking-wider mb-xs">Note</p>
-            <p className="text-white/60 text-[12px]">Registration is open to vendors only. Internal staff (Admin, Officer, Manager) accounts are provisioned by your organization administrator.</p>
+
+          {/* Staff note */}
+          <div style={{ marginTop:18, padding:'11px 14px', borderRadius:12, background:'rgba(251,191,36,.07)', border:'1px solid rgba(251,191,36,.2)', display:'flex', alignItems:'flex-start', gap:9 }}>
+            <span className="material-symbols-outlined" style={{ fontSize:15, color:'#FCD34D', flexShrink:0, marginTop:1, fontVariationSettings:"'FILL' 1" }}>info</span>
+            <div>
+              <div style={{ color:'#FDE68A', fontSize:11, fontWeight:700, marginBottom:3 }}>Internal Staff Note</div>
+              <div style={{ color:'rgba(255,255,255,.4)', fontSize:11, lineHeight:1.45 }}>Admin, Officer & Manager accounts are provisioned by your org admin — not via this form.</div>
+            </div>
           </div>
         </div>
-        <div className="relative z-10 text-white/50 font-body-sm text-[12px]">© 2026 VendorBridge Enterprise</div>
-      </section>
 
-      {/* Form Panel */}
-      <section className="w-full lg:w-[60%] flex flex-col justify-center p-xl bg-white relative overflow-y-auto">
-        <div className="w-full max-w-[520px] mx-auto py-lg">
-          <div className="mb-xl">
-            <div className="inline-flex items-center gap-sm bg-orange-50 border border-orange-200 text-orange-700 px-md py-xs rounded-full text-[12px] font-semibold mb-md">
-              <span>🏭</span> Vendor Registration
+        <div style={{ position:'relative', zIndex:2, color:'rgba(255,255,255,.18)', fontSize:11, flexShrink:0 }}>© 2026 VendorBridge Enterprise</div>
+      </div>
+
+      {/* ══════ RIGHT FORM PANEL ══════ */}
+      <div style={{ flex:1, display:'flex', flexDirection:'column', background:'#fff', overflow:'hidden' }}>
+
+        {/* Top bar */}
+        <div style={{ flexShrink:0, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'0 36px', height:58, borderBottom:'1px solid #F1F5F9' }}>
+          <div className="reg-mobile-logo" style={{ alignItems:'center', gap:10 }}>
+            <div style={{ width:30, height:30, borderRadius:8, background:'linear-gradient(135deg,#6366F1,#8B5CF6)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+              <span className="material-symbols-outlined" style={{ fontSize:16, color:'#fff' }}>hub</span>
             </div>
-            <h1 className="font-h1 text-h1 text-on-surface mb-xs text-[28px] font-bold">Create Vendor Account</h1>
-            <p className="font-body-md text-on-surface-variant text-[14px]">Set up your vendor profile to start bidding on procurement requests.</p>
+            <span style={{ fontWeight:700, fontSize:14, color:'#0F172A' }}>VendorBridge</span>
           </div>
-
-          <form className="space-y-lg animate-fade-in" onSubmit={handleSubmit}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-md">
-              <div className="space-y-xs">
-                <label className="font-label-md text-on-surface-variant block uppercase tracking-wider text-[11px] font-semibold" htmlFor="fullName">Contact Person Name</label>
-                <div className="relative">
-                  <span className="material-symbols-outlined absolute left-md top-1/2 -translate-y-1/2 text-outline-variant">person</span>
-                  <input className="w-full h-10 pl-[44px] pr-md bg-white border border-outline-variant rounded-lg font-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-[14px]"
-                    id="fullName" required type="text" placeholder="Raj Patel"
-                    value={formData.fullName} onChange={set('fullName')} />
-                </div>
-              </div>
-              <div className="space-y-xs">
-                <label className="font-label-md text-on-surface-variant block uppercase tracking-wider text-[11px] font-semibold" htmlFor="companyName">Company / Business Name</label>
-                <div className="relative">
-                  <span className="material-symbols-outlined absolute left-md top-1/2 -translate-y-1/2 text-outline-variant">business</span>
-                  <input className="w-full h-10 pl-[44px] pr-md bg-white border border-outline-variant rounded-lg font-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-[14px]"
-                    id="companyName" required type="text" placeholder="Patel Enterprises Ltd"
-                    value={formData.companyName} onChange={set('companyName')} />
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-md">
-              <div className="space-y-xs">
-                <label className="font-label-md text-on-surface-variant block uppercase tracking-wider text-[11px] font-semibold" htmlFor="email">Business Email</label>
-                <div className="relative">
-                  <span className="material-symbols-outlined absolute left-md top-1/2 -translate-y-1/2 text-outline-variant">mail</span>
-                  <input className="w-full h-10 pl-[44px] pr-md bg-white border border-outline-variant rounded-lg font-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-[14px]"
-                    id="email" required type="email" placeholder="sales@patelenterprises.com"
-                    value={formData.email} onChange={set('email')} />
-                </div>
-              </div>
-              <div className="space-y-xs">
-                <label className="font-label-md text-on-surface-variant block uppercase tracking-wider text-[11px] font-semibold" htmlFor="phone">Phone Number</label>
-                <div className="relative">
-                  <span className="material-symbols-outlined absolute left-md top-1/2 -translate-y-1/2 text-outline-variant">phone</span>
-                  <input className="w-full h-10 pl-[44px] pr-md bg-white border border-outline-variant rounded-lg font-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-[14px]"
-                    id="phone" type="tel" placeholder="+91 98765 43210"
-                    value={formData.phone} onChange={set('phone')} />
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-xs">
-              <label className="font-label-md text-on-surface-variant block uppercase tracking-wider text-[11px] font-semibold" htmlFor="password">Create Password</label>
-              <div className="relative group">
-                <span className="material-symbols-outlined absolute left-md top-1/2 -translate-y-1/2 text-outline-variant group-focus-within:text-primary transition-colors">lock</span>
-                <input
-                  className="w-full h-10 pl-[44px] pr-10 bg-white border border-outline-variant rounded-lg font-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-[14px]"
-                  id="password" required minLength={8} type={showPassword ? 'text' : 'password'}
-                  placeholder="Min. 8 characters"
-                  value={formData.password} onChange={set('password')} />
-                <button type="button"
-                  className="absolute right-md top-1/2 -translate-y-1/2 text-outline-variant hover:text-on-surface"
-                  onClick={() => setShowPassword(v => !v)}>
-                  <span className="material-symbols-outlined text-[18px]">{showPassword ? 'visibility_off' : 'visibility'}</span>
-                </button>
-              </div>
-              <p className="text-xs text-on-surface-variant">This will be your login password. Keep it safe.</p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-md">
-              <div className="space-y-xs">
-                <label className="font-label-md text-on-surface-variant block uppercase tracking-wider text-[11px] font-semibold" htmlFor="category">Business Category</label>
-                <select className="w-full h-10 px-md bg-white border border-outline-variant rounded-lg font-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-[14px]"
-                  id="category" value={formData.category} onChange={set('category')}>
-                  <option>Logistics</option>
-                  <option>IT Hardware</option>
-                  <option>Office Supplies</option>
-                  <option>Industrial Parts</option>
-                  <option>Construction</option>
-                  <option>Services</option>
-                </select>
-              </div>
-              <div className="space-y-xs">
-                <label className="font-label-md text-on-surface-variant block uppercase tracking-wider text-[11px] font-semibold" htmlFor="country">Country</label>
-                <select className="w-full h-10 px-md bg-white border border-outline-variant rounded-lg font-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-[14px]"
-                  id="country" value={formData.country} onChange={set('country')}>
-                  <option>India</option>
-                  <option>United States</option>
-                  <option>Singapore</option>
-                  <option>Germany</option>
-                  <option>Japan</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="space-y-xs">
-              <label className="font-label-md text-on-surface-variant block uppercase tracking-wider text-[11px] font-semibold" htmlFor="additionalInfo">Business Description</label>
-              <textarea
-                className="w-full h-20 p-md bg-white border border-outline-variant rounded-lg font-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-[14px]"
-                id="additionalInfo" placeholder="Briefly describe your products, services, and capabilities..."
-                value={formData.additionalInfo} onChange={set('additionalInfo')} />
-            </div>
-
-            <div className="flex items-start gap-sm py-xs">
-              <input className="w-4 h-4 mt-1 rounded border-outline-variant text-primary focus:ring-primary"
-                id="agree" type="checkbox" checked={formData.agree}
-                onChange={(e) => setFormData({ ...formData, agree: e.target.checked })} />
-              <label className="font-body-sm text-on-surface-variant cursor-pointer text-[12px]" htmlFor="agree">
-                I agree to the <a className="text-primary font-medium hover:underline" href="#">Terms of Service</a> and <a className="text-primary font-medium hover:underline" href="#">Privacy Policy</a>. I understand my account requires Admin verification before activation.
-              </label>
-            </div>
-
-            <button className="w-full h-10 bg-primary text-white font-h3 text-h3 rounded-lg hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-sm font-semibold" type="submit">
-              Create Vendor Account
-              <span className="material-symbols-outlined text-[20px]">how_to_reg</span>
-            </button>
-          </form>
-
-          <p className="mt-xl text-center font-body-md text-on-surface-variant text-[14px]">
-            Already have an account? <Link to="/login" className="text-primary font-semibold hover:underline">Sign in</Link>
-          </p>
+          {/* empty right side — sign-in link moved below submit */}
+          <div />
         </div>
-      </section>
-    </main>
+
+        {/* Form — centred, no scroll */}
+        <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:'0 36px', overflow:'hidden' }}>
+          <div style={{ width:'100%', maxWidth:560 }}>
+
+            {/* Heading */}
+            <div style={{ marginBottom:20 }}>
+              <div style={{ display:'inline-flex', alignItems:'center', gap:7, padding:'4px 12px', borderRadius:100, background:'#FEF3C7', border:'1px solid #FDE68A', marginBottom:12 }}>
+                <span className="material-symbols-outlined" style={{ fontSize:12, color:'#D97706', fontVariationSettings:"'FILL' 1" }}>business</span>
+                <span style={{ fontSize:11, color:'#B45309', fontWeight:700, letterSpacing:'.04em' }}>VENDOR REGISTRATION</span>
+              </div>
+              <h1 style={{ fontSize:24, fontWeight:800, color:'#0F172A', margin:0, letterSpacing:'-.4px' }}>Create your vendor account</h1>
+              <p style={{ fontSize:13, color:'#64748B', marginTop:5 }}>Fill in your details below — takes less than 2 minutes</p>
+            </div>
+
+            {/* ── FORM ── */}
+            <form onSubmit={handleSubmit}>
+              {/* Row 1: 2 cols */}
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'14px 16px', marginBottom:14 }}>
+                <div>
+                  <label style={LBL}>Contact Person *</label>
+                  <Inp icon="person" placeholder="Raj Patel" value={form.fullName} onChange={clrErr('fullName')} hasErr={!!errors.fullName} />
+                  {errors.fullName && <p style={ERR}><span className="material-symbols-outlined" style={{ fontSize:12, fontVariationSettings:"'FILL' 1" }}>error</span>{errors.fullName}</p>}
+                </div>
+                <div>
+                  <label style={LBL}>Company Name *</label>
+                  <Inp icon="business" placeholder="Patel Enterprises Ltd" value={form.companyName} onChange={clrErr('companyName')} hasErr={!!errors.companyName} />
+                  {errors.companyName && <p style={ERR}><span className="material-symbols-outlined" style={{ fontSize:12, fontVariationSettings:"'FILL' 1" }}>error</span>{errors.companyName}</p>}
+                </div>
+              </div>
+
+              {/* Row 2: 2 cols */}
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'14px 16px', marginBottom:14 }}>
+                <div>
+                  <label style={LBL}>Business Email *</label>
+                  <Inp icon="mail" type="email" placeholder="sales@company.com" value={form.email} onChange={clrErr('email')} hasErr={!!errors.email} />
+                  {errors.email && <p style={ERR}><span className="material-symbols-outlined" style={{ fontSize:12, fontVariationSettings:"'FILL' 1" }}>error</span>{errors.email}</p>}
+                </div>
+                <div>
+                  <label style={LBL}>Phone Number</label>
+                  <Inp icon="phone" type="tel" placeholder="+91 98765 43210" value={form.phone} onChange={set('phone')} />
+                </div>
+              </div>
+
+              {/* Row 3: 2 cols — passwords */}
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'14px 16px', marginBottom:14 }}>
+                <div>
+                  <label style={LBL}>Password *</label>
+                  <Inp
+                    icon="lock" type={showP?'text':'password'} placeholder="Min. 8 characters"
+                    value={form.password} onChange={clrErr('password')} hasErr={!!errors.password}
+                    extraPr={40}
+                    right={
+                      <button type="button" onClick={()=>setShowP(v=>!v)} style={{ position:'absolute', right:11, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', padding:0, color:'#94A3B8', display:'flex' }}>
+                        <span className="material-symbols-outlined" style={{ fontSize:16 }}>{showP?'visibility_off':'visibility'}</span>
+                      </button>
+                    }
+                  />
+                  {errors.password && <p style={ERR}><span className="material-symbols-outlined" style={{ fontSize:12, fontVariationSettings:"'FILL' 1" }}>error</span>{errors.password}</p>}
+                </div>
+                <div>
+                  <label style={LBL}>Confirm Password *</label>
+                  <Inp
+                    icon="lock_reset" type={showC?'text':'password'} placeholder="Repeat password"
+                    value={form.confirmPassword} onChange={clrErr('confirmPassword')} hasErr={!!errors.confirmPassword}
+                    extraPr={40}
+                    right={
+                      <button type="button" onClick={()=>setShowC(v=>!v)} style={{ position:'absolute', right:11, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', padding:0, color:'#94A3B8', display:'flex' }}>
+                        <span className="material-symbols-outlined" style={{ fontSize:16 }}>{showC?'visibility_off':'visibility'}</span>
+                      </button>
+                    }
+                  />
+                  {errors.confirmPassword && <p style={ERR}><span className="material-symbols-outlined" style={{ fontSize:12, fontVariationSettings:"'FILL' 1" }}>error</span>{errors.confirmPassword}</p>}
+                </div>
+              </div>
+
+              {/* Row 4: 2 cols — selects */}
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'14px 16px', marginBottom:16 }}>
+                <div>
+                  <label style={LBL}>Business Category *</label>
+                  <Sel icon="category" value={form.category} onChange={set('category')}>
+                    {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                  </Sel>
+                </div>
+                <div>
+                  <label style={LBL}>Country</label>
+                  <Sel icon="location_on" value={form.country} onChange={set('country')}>
+                    {COUNTRIES.map(c => <option key={c}>{c}</option>)}
+                  </Sel>
+                </div>
+              </div>
+
+              {/* Terms */}
+              <div style={{ marginBottom:16, padding:'12px 14px', borderRadius:10, border:`1.5px solid ${errors.agree?'#FCA5A5':'#E2E8F0'}`, background:errors.agree?'#FEF2F2':'#F8FAFC', display:'flex', alignItems:'flex-start', gap:10, transition:'all .15s' }}>
+                <input type="checkbox" id="agree" checked={form.agree} onChange={set('agree')}
+                  style={{ width:15, height:15, marginTop:2, cursor:'pointer', accentColor:'#6366F1', flexShrink:0 }} />
+                <label htmlFor="agree" style={{ fontSize:12, color:'#4B5563', cursor:'pointer', lineHeight:1.55, userSelect:'none' }}>
+                  I agree to VendorBridge{' '}
+                  <a href="#" style={{ color:'#6366F1', fontWeight:700, textDecoration:'none' }}>Terms of Service</a>
+                  {' '}and{' '}
+                  <a href="#" style={{ color:'#6366F1', fontWeight:700, textDecoration:'none' }}>Privacy Policy</a>.
+                  {' '}My account requires administrator approval before activation.
+                </label>
+              </div>
+              {errors.agree && <p style={{ ...ERR, marginTop:-10, marginBottom:12 }}><span className="material-symbols-outlined" style={{ fontSize:12, fontVariationSettings:"'FILL' 1" }}>error</span>{errors.agree}</p>}
+
+              {/* ── Submit button ── */}
+              <button
+                type="submit"
+                disabled={loading}
+                style={{
+                  width:'100%', height:46, borderRadius:11,
+                  background: loading ? '#818CF8' : 'linear-gradient(135deg,#4F46E5 0%,#7C3AED 100%)',
+                  border:'none', color:'#fff', fontWeight:700, fontSize:14,
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  display:'flex', alignItems:'center', justifyContent:'center', gap:8,
+                  boxShadow: loading ? 'none' : '0 4px 18px rgba(79,70,229,.4)',
+                  transition:'all .18s', fontFamily:'Inter,sans-serif', letterSpacing:'-.1px',
+                }}
+                onMouseEnter={e => { if(!loading){ e.currentTarget.style.boxShadow='0 6px 26px rgba(79,70,229,.56)'; e.currentTarget.style.transform='translateY(-1px)'; }}}
+                onMouseLeave={e => { e.currentTarget.style.boxShadow=loading?'none':'0 4px 18px rgba(79,70,229,.4)'; e.currentTarget.style.transform='none'; }}
+              >
+                {loading
+                  ? <><span style={{ width:17, height:17, border:'2px solid rgba(255,255,255,.3)', borderTopColor:'#fff', borderRadius:'50%', display:'inline-block', animation:'_spin .7s linear infinite' }} /> Creating account…</>
+                  : <><span className="material-symbols-outlined" style={{ fontSize:17 }}>how_to_reg</span> Create Vendor Account</>
+                }
+              </button>
+              {/* Have an account — sign in pill */}
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:10, marginTop:6 }}>
+                <span style={{ fontSize:13, color:'#94A3B8' }}>Have an account?</span>
+                <Link
+                  to="/login"
+                  style={{
+                    fontSize:13, color:'#6366F1', fontWeight:700, textDecoration:'none',
+                    padding:'7px 18px', borderRadius:10,
+                    border:'1.5px solid #C7D2FE', background:'#EEF2FF',
+                    transition:'all .15s', display:'inline-block',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background='#E0E7FF'; e.currentTarget.style.borderColor='#6366F1'; e.currentTarget.style.boxShadow='0 0 0 3px rgba(99,102,241,.12)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background='#EEF2FF'; e.currentTarget.style.borderColor='#C7D2FE'; e.currentTarget.style.boxShadow='none'; }}
+                >
+                  Sign In
+                </Link>
+              </div>
+            </form>
+
+            {/* Bottom note */}
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:5, marginTop:12 }}>
+              <span className="material-symbols-outlined" style={{ fontSize:12, color:'#CBD5E1', fontVariationSettings:"'FILL' 1" }}>verified_user</span>
+              <span style={{ fontSize:11, color:'#CBD5E1' }}>Your data is encrypted and never shared</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes _spin { to { transform: rotate(360deg); } }
+        .reg-left { display: none !important; }
+        .reg-mobile-logo { display: none !important; }
+        @media (min-width: 1024px) {
+          .reg-left { display: flex !important; }
+        }
+        @media (max-width: 1023px) {
+          .reg-mobile-logo { display: flex !important; }
+        }
+        html, body { overflow: hidden; height: 100%; }
+      `}</style>
+    </div>
   );
-};
-
-export default Registration;
+}

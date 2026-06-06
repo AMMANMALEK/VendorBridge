@@ -1,327 +1,400 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppState } from '../context/StateContext';
-import Sidebar from '../components/Sidebar';
-import Header from '../components/Header';
+import Layout from '../components/Layout';
+
+const StatusBadge = ({ status }) => {
+  const MAP = {
+    'Approved':         { cls: 'badge badge-approved', icon: 'check_circle' },
+    'Pending Approval': { cls: 'badge badge-pending',  icon: 'schedule' },
+    'Pending':          { cls: 'badge badge-pending',  icon: 'schedule' },
+    'Draft':            { cls: 'badge badge-draft',    icon: 'edit_note' },
+    'Rejected':         { cls: 'badge badge-rejected', icon: 'cancel' },
+  };
+  const cfg = MAP[status] || { cls: 'badge badge-draft', icon: 'info' };
+  return (
+    <span className={cfg.cls}>
+      <span className="material-symbols-outlined" style={{ fontSize: 12, fontVariationSettings: "'FILL' 1" }}>{cfg.icon}</span>
+      {status}
+    </span>
+  );
+};
+
+const KPICard = ({ label, value, sub, subColor = '#6366F1', icon, iconBg, iconColor, onClick, alert }) => (
+  <div
+    className={`card p-5 flex items-start justify-between ${onClick ? 'cursor-pointer hover:border-indigo-300 transition-all hover:shadow-md' : ''}`}
+    onClick={onClick}
+  >
+    <div className="flex-1 min-w-0">
+      <p className="text-[12px] font-semibold text-slate-400 uppercase tracking-wide mb-1">{label}</p>
+      <h3 className={`font-bold text-[30px] leading-none mb-1.5 ${alert ? 'text-red-500' : 'text-slate-800'}`}>{value}</h3>
+      {sub && (
+        <p className="text-[12px] font-medium flex items-center gap-1" style={{ color: subColor }}>
+          {sub}
+        </p>
+      )}
+    </div>
+    <div className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 ml-3"
+      style={{ background: iconBg }}>
+      <span className="material-symbols-outlined" style={{ fontSize: 22, color: iconColor }}>{icon}</span>
+    </div>
+  </div>
+);
 
 const Dashboard = () => {
   const { rfqs, approvals, pos, invoices, vendors, registeredUsers, user } = useAppState();
   const navigate = useNavigate();
 
-  // Dynamic calculations
-  const activeRFQsCount = rfqs.filter(r => r.status === 'Open').length;
-  const pendingApprovalsCount = approvals.filter(a => a.status === 'Pending').length;
-  
-  const totalSpend = pos
-    .filter(p => p.status === 'Approved')
-    .reduce((sum, p) => sum + p.amount, 0);
-  
-  const formattedSpend = totalSpend >= 100000 
-    ? `₹${(totalSpend / 100000).toFixed(1)}L` 
-    : `₹${totalSpend.toLocaleString()}`;
-
-  const overdueInvoicesCount = invoices.filter(i => i.status === 'Overdue').length;
-  const pendingVendors = (vendors || []).filter(v => v.status === 'Pending');
-  const totalUsers = (registeredUsers || []).length;
-
-  // Recent POs
-  const recentPOs = pos.slice(-4).reverse();
-
-  // Helper status styling for POs
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case 'Approved':
-        return <span className="px-sm py-1 rounded-full text-xs font-semibold bg-secondary-container/30 text-on-secondary-container">Approved</span>;
-      case 'Pending Approval':
-      case 'Pending':
-        return <span className="px-sm py-1 rounded-full text-xs font-semibold bg-tertiary-fixed/30 text-tertiary">Pending</span>;
-      default:
-        return <span className="px-sm py-1 rounded-full text-xs font-semibold bg-surface-variant text-on-surface-variant">{status}</span>;
-    }
-  };
-
   const role = user?.role || 'officer';
 
+  const activeRFQsCount       = rfqs.filter(r => r.status === 'Open').length;
+  const pendingApprovalsCount = approvals.filter(a => a.status === 'Pending').length;
+  const returnedToOfficerCount = approvals.filter(a => a.status === 'Action Required' && a.type === 'Returned to Officer').length;
+  const totalSpend            = pos.filter(p => p.status === 'Approved').reduce((s, p) => s + p.amount, 0);
+  const formattedSpend        = totalSpend >= 100000
+    ? `₹${(totalSpend / 100000).toFixed(1)}L`
+    : `₹${totalSpend.toLocaleString()}`;
+  const overdueInvoicesCount  = invoices.filter(i => i.status === 'Overdue').length;
+  const pendingVendors        = vendors.filter(v => v.status === 'Pending');
+  const totalUsers            = registeredUsers.length;
+  const recentPOs             = pos.slice(-5).reverse();
+
+  const greeting = () => {
+    const h = new Date().getHours();
+    if (h < 12) return 'Good morning';
+    if (h < 17) return 'Good afternoon';
+    return 'Good evening';
+  };
+
+  const ROLE_DESCS = {
+    admin:   'Full organization overview — users, RFQs, approvals, and spend.',
+    officer: "Here's your procurement pipeline status for today.",
+    manager: 'Approvals dashboard — pending sign-offs and procurement review.',
+  };
+
+  const CHART_BARS = [
+    { month: 'Jan', pct: 60 }, { month: 'Feb', pct: 45 },
+    { month: 'Mar', pct: 85 }, { month: 'Apr', pct: 70 },
+    { month: 'May', pct: 95 }, { month: 'Jun', pct: 75 },
+  ];
+
   return (
-    <div className="flex min-h-screen bg-[#F7F9FC]">
-      <Sidebar />
-      
-      <div className="flex-1 ml-sidebar_width pt-header_height min-h-screen flex flex-col">
-        <Header title="Dashboard" />
+    <Layout title="Dashboard">
+      <div className="max-w-[1400px] mx-auto space-y-5">
 
-        <main className="p-xl max-w-container_max_width w-full mx-auto flex-1 animate-fade-in">
-          {/* Welcome Header */}
-          <div className="mb-xl">
-            <div className="flex items-center gap-sm mb-xs">
-              <h2 className="font-h1 text-h1 text-on-surface font-bold text-[28px]">Welcome back, {user ? user.name.split(' ')[0] : 'User'} {user?.symbol}</h2>
-            </div>
-            <p className="text-on-surface-variant font-body-md text-[14px]">
-              {role === 'admin' && 'Full organization overview — all users, RFQs, approvals, and spend.'}
-              {role === 'officer' && "Here's what's happening in your procurement pipeline today."}
-              {role === 'manager' && 'Approvals dashboard — review and sign off on pending procurement requests.'}
-            </p>
+        {/* ── Welcome ── */}
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-slate-800 font-bold text-[24px] leading-tight">
+              {greeting()}, {user?.name?.split(' ')[0] || 'User'}
+            </h2>
+            <p className="text-slate-500 text-[14px] mt-1">{ROLE_DESCS[role]}</p>
           </div>
+          <p className="text-[13px] text-slate-400 whitespace-nowrap hidden md:block">{new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+        </div>
 
-          {/* Top KPI Row — admin gets extra cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-lg mb-xl">
-            {/* Card 1 */}
-            <div className="bg-white p-lg rounded-xl border border-outline-variant custom-shadow flex items-start justify-between">
-              <div>
-                <p className="text-on-surface-variant font-label-md mb-xs text-[13px] uppercase tracking-wider">
-                  {role === 'admin' ? 'Total Users' : 'Active RFQs'}
-                </p>
-                <h3 className="font-h1 text-h1 text-on-surface font-bold text-[28px]">
-                  {role === 'admin' ? totalUsers : activeRFQsCount}
-                </h3>
-                <p className="text-secondary text-xs mt-xs flex items-center gap-1 font-medium">
-                  <span className="material-symbols-outlined text-[14px]">trending_up</span>
-                  {role === 'admin' ? 'Registered accounts' : 'Live RFQs'}
-                </p>
+        {/* ── KPI Cards ── */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <KPICard
+            label={role === 'admin' ? 'Total Users' : 'Active RFQs'}
+            value={role === 'admin' ? totalUsers : activeRFQsCount}
+            sub={role === 'admin' ? 'Registered accounts' : 'Live requests'}
+            icon={role === 'admin' ? 'group' : 'request_quote'}
+            iconBg="#EEF2FF" iconColor="#6366F1"
+          />
+          <KPICard
+            label={role === 'admin' ? 'Pending Vendors' : 'Pending Approvals'}
+            value={role === 'admin' ? pendingVendors.length : pendingApprovalsCount}
+            sub="Awaiting action"
+            subColor="#D97706"
+            icon={role === 'admin' ? 'storefront' : 'task_alt'}
+            iconBg="#FEF3C7" iconColor="#D97706"
+            onClick={() => navigate(role === 'admin' ? '/vendors' : '/approvals')}
+          />
+          <KPICard
+            label="Approved PO Spend"
+            value={formattedSpend}
+            sub="Total committed spend"
+            icon="receipt_long"
+            iconBg="#ECFDF5" iconColor="#059669"
+          />
+          <KPICard
+            label="Overdue Invoices"
+            value={overdueInvoicesCount}
+            sub="Needs immediate attention"
+            subColor="#EF4444"
+            icon="warning"
+            iconBg="#FEE2E2" iconColor="#EF4444"
+            onClick={() => navigate('/purchase-orders')}
+            alert={overdueInvoicesCount > 0}
+          />
+        </div>
+
+        {/* ── Returned-to-Officer urgent banner ── */}
+        {role === 'officer' && returnedToOfficerCount > 0 && (
+          <div
+            className="flex items-center justify-between px-5 py-4 rounded-2xl bg-orange-50 border-2 border-orange-300 cursor-pointer hover:bg-orange-100 transition-colors"
+            onClick={() => navigate('/approvals')}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-orange-600" style={{ fontSize: 22 }}>assignment_return</span>
               </div>
-              <div className="bg-primary-container/10 p-sm rounded-lg text-primary flex items-center justify-center">
-                <span className="material-symbols-outlined">{role === 'admin' ? 'group' : 'request_quote'}</span>
+              <div>
+                <p className="font-bold text-[14px] text-orange-800">
+                  {returnedToOfficerCount} request{returnedToOfficerCount > 1 ? 's' : ''} returned for your revision
+                </p>
+                <p className="text-[12px] text-orange-600">The Manager rejected and returned {returnedToOfficerCount === 1 ? 'a request' : 'requests'} with feedback. Go to Approvals to read the reason, then resubmit from Quotation Comparison.</p>
               </div>
             </div>
-
-            {/* Card 2 */}
-            <div className="bg-white p-lg rounded-xl border border-outline-variant custom-shadow flex items-start justify-between cursor-pointer hover:border-primary transition-all"
-              onClick={() => navigate(role === 'admin' ? '/vendors' : '/approvals')}>
-              <div>
-                <p className="text-on-surface-variant font-label-md mb-xs text-[13px] uppercase tracking-wider">
-                  {role === 'admin' ? 'Pending Vendors' : 'Pending Approvals'}
-                </p>
-                <h3 className="font-h1 text-h1 text-on-surface font-bold text-[28px]">
-                  {role === 'admin' ? pendingVendors.length : pendingApprovalsCount}
-                </h3>
-                <p className="text-amber-600 text-xs mt-xs flex items-center gap-1 font-medium">
-                  <span className="material-symbols-outlined text-[14px]">schedule</span>
-                  Awaiting verification
-                </p>
-              </div>
-              <div className="bg-amber-100 p-sm rounded-lg text-amber-600 flex items-center justify-center">
-                <span className="material-symbols-outlined">{role === 'admin' ? 'storefront' : 'fact_check'}</span>
-              </div>
-            </div>
-
-            {/* Card 3 — same for all */}
-            <div className="bg-white p-lg rounded-xl border border-outline-variant custom-shadow flex items-start justify-between">
-              <div>
-                <p className="text-on-surface-variant font-label-md mb-xs text-[13px] uppercase tracking-wider">
-                  {role === 'admin' ? 'Total PO Spend' : 'POs This Month'}
-                </p>
-                <h3 className="font-h1 text-h1 text-on-surface font-bold text-[28px]">{formattedSpend}</h3>
-                <p className="text-secondary text-xs mt-xs flex items-center gap-1 font-medium">
-                  <span className="material-symbols-outlined text-[14px]">trending_up</span>
-                  Approved PO total
-                </p>
-              </div>
-              <div className="bg-secondary-container/30 p-sm rounded-lg text-on-secondary-container flex items-center justify-center">
-                <span className="material-symbols-outlined">shopping_bag</span>
-              </div>
-            </div>
-
-            {/* Card 4 */}
-            <div className="bg-white p-lg rounded-xl border border-outline-variant custom-shadow flex items-start justify-between cursor-pointer hover:border-error transition-all"
-              onClick={() => navigate('/purchase-orders')}>
-              <div>
-                <p className="text-on-surface-variant font-label-md mb-xs text-[13px] uppercase tracking-wider">Overdue Invoices</p>
-                <h3 className="font-h1 text-h1 text-error font-bold text-[28px]">{overdueInvoicesCount}</h3>
-                <p className="text-error text-xs mt-xs flex items-center gap-1 font-medium">
-                  <span className="material-symbols-outlined text-[14px]">warning</span>
-                  Needs immediate action
-                </p>
-              </div>
-              <div className="bg-error-container p-sm rounded-lg text-on-error-container flex items-center justify-center">
-                <span className="material-symbols-outlined">receipt_long</span>
-              </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <span className="bg-orange-500 text-white text-[12px] font-bold px-3 py-1 rounded-full">{returnedToOfficerCount} action{returnedToOfficerCount > 1 ? 's' : ''}</span>
+              <span className="material-symbols-outlined text-orange-500" style={{ fontSize: 20 }}>arrow_forward</span>
             </div>
           </div>
+        )}
 
-          {/* Middle Row: Recent POs & Spending Trends */}
-          <div className="grid grid-cols-1 lg:grid-cols-10 gap-lg mb-xl">
-            {/* Recent POs Table (60%) */}
-            <div className="lg:col-span-6 bg-white rounded-xl border border-outline-variant custom-shadow flex flex-col overflow-hidden">
-              <div className="p-lg border-b border-outline-variant flex justify-between items-center">
-                <h3 className="font-h3 text-h3 font-semibold text-[18px]">Recent Purchase Orders</h3>
-                <button onClick={() => navigate('/purchase-orders')} className="text-primary font-label-md hover:underline text-[13px] font-semibold">View All</button>
+        {/* ── Mid row ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-10 gap-5">
+          {/* Recent POs */}
+          <div className="lg:col-span-6 card overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <div>
+                <h3 className="font-bold text-slate-800 text-[15px]">Recent Purchase Orders</h3>
+                <p className="text-slate-400 text-[12px] mt-0.5">{recentPOs.length} most recent</p>
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left">
-                  <thead className="bg-surface-container-low">
-                    <tr>
-                      <th className="px-lg py-sm font-label-md text-on-surface-variant text-[12px] uppercase">PO#</th>
-                      <th className="px-lg py-sm font-label-md text-on-surface-variant text-[12px] uppercase">Vendor</th>
-                      <th className="px-lg py-sm font-label-md text-on-surface-variant text-[12px] uppercase">Amount</th>
-                      <th className="px-lg py-sm font-label-md text-on-surface-variant text-[12px] uppercase">Status</th>
+              <button
+                onClick={() => navigate('/purchase-orders')}
+                className="text-indigo-600 text-[13px] font-semibold hover:underline flex items-center gap-1"
+              >
+                View all
+                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>arrow_forward</span>
+              </button>
+            </div>
+            <div className="overflow-x-auto flex-1">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>PO Number</th>
+                    <th>Vendor</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentPOs.map(po => (
+                    <tr
+                      key={po.id}
+                      className="cursor-pointer"
+                      onClick={() => navigate('/purchase-orders')}
+                    >
+                      <td><span className="font-mono text-[12px] font-semibold text-slate-500">{po.id}</span></td>
+                      <td>
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-lg bg-indigo-100 flex items-center justify-center flex-shrink-0">
+                            <span className="material-symbols-outlined text-indigo-500" style={{ fontSize: 14 }}>business</span>
+                          </div>
+                          <span className="font-medium text-slate-700 text-[13px]">{po.vendorName}</span>
+                        </div>
+                      </td>
+                      <td><span className="font-semibold text-slate-800">₹{po.amount?.toLocaleString()}</span></td>
+                      <td><StatusBadge status={po.status} /></td>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-outline-variant">
-                    {recentPOs.map(po => (
-                      <tr 
-                        key={po.id} 
-                        className="hover:bg-surface-container-low transition-colors group cursor-pointer"
-                        onClick={() => navigate('/purchase-orders')}
-                      >
-                        <td className="px-lg py-md font-label-md text-[13px]">{po.id}</td>
-                        <td className="px-lg py-md text-body-md text-[14px]">{po.vendorName}</td>
-                        <td className="px-lg py-md text-body-md text-[14px]">₹{po.amount?.toLocaleString()}</td>
-                        <td className="px-lg py-md">{getStatusBadge(po.status)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Spending Trends Chart (40%) */}
-            <div className="lg:col-span-4 bg-white rounded-xl border border-outline-variant custom-shadow flex flex-col p-lg">
-              <div className="flex justify-between items-center mb-lg">
-                <h3 className="font-h3 text-h3 font-semibold text-[18px]">Spending Trends</h3>
-                <div className="flex gap-xs items-center">
-                  <span className="w-3 h-3 rounded-full bg-primary"></span>
-                  <span className="text-[12px] text-on-surface-variant">Last 6 Months</span>
-                </div>
-              </div>
-              <div className="flex-1 flex items-end justify-between gap-sm pt-xl h-[160px]">
-                {[
-                  { month: 'Jan', val: '60%', active: false },
-                  { month: 'Feb', val: '45%', active: false },
-                  { month: 'Mar', val: '85%', active: false },
-                  { month: 'Apr', val: '70%', active: false },
-                  { month: 'May', val: '95%', active: false },
-                  { month: 'Jun', val: '75%', active: true }
-                ].map((item, idx) => (
-                  <div key={idx} className="flex flex-col items-center gap-sm flex-1">
-                    <div 
-                      className={`w-full rounded-t-lg transition-all duration-300 hover:scale-y-105 cursor-pointer origin-bottom ${
-                        item.active ? 'bg-primary' : 'bg-surface-container-high hover:bg-primary'
-                      }`}
-                      style={{ height: item.val }}
-                    ></div>
-                    <span className={`text-xs font-label-md ${item.active ? 'text-on-surface font-semibold' : 'text-on-surface-variant'}`}>{item.month}</span>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
 
-          {/* Admin: Notifications + pending vendor alerts */}
-          {role === 'admin' && (pendingVendors.length > 0 || overdueInvoicesCount > 0 || pendingApprovalsCount > 0) && (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-lg mb-xl space-y-sm">
-              <div className="flex items-center gap-sm mb-sm">
-                <span className="material-symbols-outlined text-amber-600">notifications_active</span>
-                <h3 className="font-semibold text-[15px] text-amber-800">System Alerts</h3>
+          {/* Spending Trend */}
+          <div className="lg:col-span-4 card p-5 flex flex-col">
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h3 className="font-bold text-slate-800 text-[15px]">Spending Trend</h3>
+                <p className="text-slate-400 text-[12px] mt-0.5">Last 6 months</p>
               </div>
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-100">
+                <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                <span className="text-[11px] font-semibold text-indigo-600">2026</span>
+              </div>
+            </div>
+            <div className="flex-1 flex items-end gap-2 pb-2" style={{ minHeight: 140 }}>
+              {CHART_BARS.map((bar, i) => (
+                <div key={i} className="flex flex-col items-center gap-1.5 flex-1">
+                  <div
+                    className="w-full rounded-t-lg transition-all duration-500 hover:opacity-80"
+                    style={{
+                      height: `${bar.pct * 1.4}px`,
+                      background: i === CHART_BARS.length - 1
+                        ? 'linear-gradient(180deg, #6366F1, #4F46E5)'
+                        : '#E8EDF5',
+                    }}
+                  />
+                  <span className={`text-[11px] font-medium ${i === CHART_BARS.length - 1 ? 'text-indigo-600 font-bold' : 'text-slate-400'}`}>
+                    {bar.month}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center justify-between pt-3 border-t border-slate-100 mt-2">
+              <span className="text-[12px] text-slate-400">Peak: May 2026</span>
+              <span className="text-[12px] font-semibold text-indigo-600">+12% vs last month</span>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Alerts (admin) ── */}
+        {role === 'admin' && (pendingVendors.length > 0 || overdueInvoicesCount > 0 || pendingApprovalsCount > 0) && (
+          <div className="card p-5 border-l-4 border-amber-400">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="material-symbols-outlined text-amber-500" style={{ fontSize: 20 }}>notifications_active</span>
+              <h3 className="font-bold text-slate-800 text-[15px]">Action Required</h3>
+            </div>
+            <div className="space-y-2">
               {pendingVendors.length > 0 && (
-                <div className="flex items-center justify-between bg-white border border-amber-200 rounded-lg px-md py-sm cursor-pointer hover:bg-amber-50 transition-colors"
-                  onClick={() => navigate('/vendors')}>
-                  <div className="flex items-center gap-sm">
-                    <span className="material-symbols-outlined text-amber-600 text-[18px]">storefront</span>
-                    <span className="text-[13px] font-medium text-on-surface">{pendingVendors.length} vendor{pendingVendors.length > 1 ? 's' : ''} awaiting verification</span>
+                <div
+                  className="flex items-center justify-between p-3 rounded-xl bg-amber-50 border border-amber-200 cursor-pointer hover:bg-amber-100 transition-colors"
+                  onClick={() => navigate('/vendors')}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="material-symbols-outlined text-amber-600" style={{ fontSize: 18 }}>storefront</span>
+                    <span className="text-[13px] font-medium text-slate-700">
+                      {pendingVendors.length} vendor{pendingVendors.length > 1 ? 's' : ''} awaiting your approval
+                    </span>
                   </div>
-                  <span className="text-primary text-[12px] font-semibold">Review →</span>
+                  <span className="text-indigo-600 text-[12px] font-semibold">Review</span>
                 </div>
               )}
               {overdueInvoicesCount > 0 && (
-                <div className="flex items-center justify-between bg-white border border-amber-200 rounded-lg px-md py-sm cursor-pointer hover:bg-amber-50 transition-colors"
-                  onClick={() => navigate('/purchase-orders')}>
-                  <div className="flex items-center gap-sm">
-                    <span className="material-symbols-outlined text-error text-[18px]">receipt_long</span>
-                    <span className="text-[13px] font-medium text-on-surface">{overdueInvoicesCount} overdue invoice{overdueInvoicesCount > 1 ? 's' : ''} need attention</span>
+                <div
+                  className="flex items-center justify-between p-3 rounded-xl bg-red-50 border border-red-200 cursor-pointer hover:bg-red-100 transition-colors"
+                  onClick={() => navigate('/purchase-orders')}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="material-symbols-outlined text-red-500" style={{ fontSize: 18 }}>receipt_long</span>
+                    <span className="text-[13px] font-medium text-slate-700">
+                      {overdueInvoicesCount} overdue invoice{overdueInvoicesCount > 1 ? 's' : ''} need attention
+                    </span>
                   </div>
-                  <span className="text-primary text-[12px] font-semibold">Review →</span>
+                  <span className="text-indigo-600 text-[12px] font-semibold">Review</span>
                 </div>
               )}
               {pendingApprovalsCount > 0 && (
-                <div className="flex items-center justify-between bg-white border border-amber-200 rounded-lg px-md py-sm cursor-pointer hover:bg-amber-50 transition-colors"
-                  onClick={() => navigate('/approvals')}>
-                  <div className="flex items-center gap-sm">
-                    <span className="material-symbols-outlined text-tertiary text-[18px]">fact_check</span>
-                    <span className="text-[13px] font-medium text-on-surface">{pendingApprovalsCount} approval{pendingApprovalsCount > 1 ? 's' : ''} waiting for sign-off</span>
+                <div
+                  className="flex items-center justify-between p-3 rounded-xl bg-indigo-50 border border-indigo-200 cursor-pointer hover:bg-indigo-100 transition-colors"
+                  onClick={() => navigate('/approvals')}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="material-symbols-outlined text-indigo-500" style={{ fontSize: 18 }}>task_alt</span>
+                    <span className="text-[13px] font-medium text-slate-700">
+                      {pendingApprovalsCount} approval{pendingApprovalsCount > 1 ? 's' : ''} waiting for sign-off
+                    </span>
                   </div>
-                  <span className="text-primary text-[12px] font-semibold">Review →</span>
+                  <span className="text-indigo-600 text-[12px] font-semibold">Review</span>
                 </div>
               )}
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Bottom Quick Actions — role-filtered */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-lg">
+        {/* ── Quick Actions ── */}
+        <div>
+          <h3 className="text-[13px] font-semibold text-slate-400 uppercase tracking-wide mb-3">Quick Actions</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {role === 'admin' && (
-              <button onClick={() => navigate('/admin/users')}
-                className="bg-purple-600 text-white p-lg rounded-xl custom-shadow hover:opacity-90 transition-all flex items-center gap-md group text-left">
-                <div className="bg-white/20 p-sm rounded-lg group-hover:scale-110 transition-transform">
-                  <span className="material-symbols-outlined">manage_accounts</span>
+              <button
+                onClick={() => navigate('/admin/users')}
+                className="flex items-center gap-4 p-4 rounded-2xl text-white transition-all hover:opacity-90 hover:shadow-lg active:scale-[0.98] text-left"
+                style={{ background: 'linear-gradient(135deg, #7C3AED, #6D28D9)', boxShadow: '0 4px 16px rgba(124,58,237,0.3)' }}
+              >
+                <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center flex-shrink-0">
+                  <span className="material-symbols-outlined" style={{ fontSize: 24 }}>manage_accounts</span>
                 </div>
                 <div>
-                  <p className="font-h3 text-h3 leading-none text-[18px] font-semibold">User Management</p>
-                  <p className="text-white/70 text-body-sm mt-1 text-[12px]">Roles, access, passwords</p>
+                  <p className="font-bold text-[15px]">User Management</p>
+                  <p className="text-white/65 text-[12px] mt-0.5">Manage roles, access, passwords</p>
                 </div>
               </button>
             )}
             {role === 'officer' && (
-              <button onClick={() => navigate('/create-rfq')}
-                className="bg-primary text-white p-lg rounded-xl custom-shadow hover:opacity-90 transition-all flex items-center gap-md group text-left">
-                <div className="bg-white/20 p-sm rounded-lg group-hover:scale-110 transition-transform">
-                  <span className="material-symbols-outlined">add_circle</span>
+              <button
+                onClick={() => navigate('/create-rfq')}
+                className="flex items-center gap-4 p-4 rounded-2xl text-white transition-all hover:opacity-90 hover:shadow-lg active:scale-[0.98] text-left"
+                style={{ background: 'linear-gradient(135deg, #4F46E5, #6366F1)', boxShadow: '0 4px 16px rgba(79,70,229,0.3)' }}
+              >
+                <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center flex-shrink-0">
+                  <span className="material-symbols-outlined" style={{ fontSize: 24 }}>add_circle</span>
                 </div>
                 <div>
-                  <p className="font-h3 text-h3 leading-none text-[18px] font-semibold">+ New RFQ</p>
-                  <p className="text-white/70 text-body-sm mt-1 text-[12px]">Send request for quotations</p>
+                  <p className="font-bold text-[15px]">Create New RFQ</p>
+                  <p className="text-white/65 text-[12px] mt-0.5">Send request for quotations</p>
                 </div>
               </button>
             )}
             {role === 'manager' && (
-              <button onClick={() => navigate('/approvals')}
-                className="bg-primary text-white p-lg rounded-xl custom-shadow hover:opacity-90 transition-all flex items-center gap-md group text-left">
-                <div className="bg-white/20 p-sm rounded-lg group-hover:scale-110 transition-transform">
-                  <span className="material-symbols-outlined">fact_check</span>
+              <button
+                onClick={() => navigate('/approvals')}
+                className="flex items-center gap-4 p-4 rounded-2xl text-white transition-all hover:opacity-90 hover:shadow-lg active:scale-[0.98] text-left"
+                style={{ background: 'linear-gradient(135deg, #059669, #10B981)', boxShadow: '0 4px 16px rgba(5,150,105,0.3)' }}
+              >
+                <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center flex-shrink-0">
+                  <span className="material-symbols-outlined" style={{ fontSize: 24 }}>task_alt</span>
                 </div>
                 <div>
-                  <p className="font-h3 text-h3 leading-none text-[18px] font-semibold">Review Approvals</p>
-                  <p className="text-white/70 text-body-sm mt-1 text-[12px]">{pendingApprovalsCount} pending sign-offs</p>
+                  <p className="font-bold text-[15px]">Review Approvals</p>
+                  <p className="text-white/65 text-[12px] mt-0.5">{pendingApprovalsCount} pending sign-offs</p>
                 </div>
               </button>
             )}
-            <button onClick={() => navigate('/vendors')}
-              className="bg-white text-on-surface p-lg rounded-xl border border-outline-variant custom-shadow hover:bg-surface-container-low transition-all flex items-center gap-md group text-left">
-              <div className="bg-primary-container/10 p-sm rounded-lg text-primary group-hover:scale-110 transition-transform">
-                <span className="material-symbols-outlined">storefront</span>
+
+            <button
+              onClick={() => navigate('/vendors')}
+              className="flex items-center gap-4 p-4 card hover:border-indigo-300 hover:shadow-md transition-all active:scale-[0.98] text-left"
+            >
+              <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-indigo-500" style={{ fontSize: 24 }}>storefront</span>
               </div>
               <div>
-                <p className="font-h3 text-h3 leading-none text-[18px] font-semibold">Vendors</p>
-                <p className="text-on-surface-variant text-body-sm mt-1 text-[12px]">
+                <p className="font-bold text-slate-800 text-[15px]">Vendor Directory</p>
+                <p className="text-slate-400 text-[12px] mt-0.5">
                   {role === 'admin' ? `${pendingVendors.length} pending approval` : role === 'manager' ? 'View vendor profiles' : 'Onboard new partner'}
                 </p>
               </div>
             </button>
-            <button onClick={() => navigate('/purchase-orders')}
-              className="bg-white text-on-surface p-lg rounded-xl border border-outline-variant custom-shadow hover:bg-surface-container-low transition-all flex items-center gap-md group text-left">
-              <div className="bg-secondary-container/30 p-sm rounded-lg text-on-secondary-container group-hover:scale-110 transition-transform">
-                <span className="material-symbols-outlined">visibility</span>
+
+            <button
+              onClick={() => navigate('/purchase-orders')}
+              className="flex items-center gap-4 p-4 card hover:border-indigo-300 hover:shadow-md transition-all active:scale-[0.98] text-left"
+            >
+              <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-emerald-600" style={{ fontSize: 24 }}>receipt_long</span>
               </div>
               <div>
-                <p className="font-h3 text-h3 leading-none text-[18px] font-semibold">
-                  {role === 'admin' ? 'All POs & Invoices' : 'View Invoices'}
+                <p className="font-bold text-slate-800 text-[15px]">
+                  {role === 'admin' ? 'All POs & Invoices' : 'Purchase Orders'}
                 </p>
-                <p className="text-on-surface-variant text-body-sm mt-1 text-[12px]">Review billing status</p>
+                <p className="text-slate-400 text-[12px] mt-0.5">Review billing and payments</p>
               </div>
             </button>
           </div>
-        </main>
-
-        {/* FAB — officer only */}
-        {role === 'officer' && (
-          <button onClick={() => navigate('/create-rfq')}
-            className="fixed bottom-xl right-xl w-14 h-14 bg-primary text-white rounded-full custom-shadow flex items-center justify-center hover:scale-110 transition-all active:scale-95 group z-30 shadow-xl">
-            <span className="material-symbols-outlined text-2xl">add</span>
-            <div className="absolute right-full mr-md px-md py-xs bg-inverse-surface text-inverse-on-surface text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-all pointer-events-none whitespace-nowrap shadow-md">
-              Create RFQ
-            </div>
-          </button>
-        )}
+        </div>
       </div>
-    </div>
+
+      {/* FAB — officer only */}
+      {role === 'officer' && (
+        <button
+          onClick={() => navigate('/create-rfq')}
+          className="fixed bottom-7 right-7 w-14 h-14 rounded-full text-white flex items-center justify-center transition-all hover:scale-110 active:scale-95 z-30 group"
+          style={{ background: 'linear-gradient(135deg, #4F46E5, #6366F1)', boxShadow: '0 6px 24px rgba(79,70,229,0.45)' }}
+          title="Create new RFQ"
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: 26 }}>add</span>
+          <span className="absolute right-full mr-3 px-3 py-1.5 bg-slate-800 text-white text-[12px] rounded-lg opacity-0 group-hover:opacity-100 transition-all pointer-events-none whitespace-nowrap shadow-lg">
+            Create RFQ
+          </span>
+        </button>
+      )}
+    </Layout>
   );
 };
 

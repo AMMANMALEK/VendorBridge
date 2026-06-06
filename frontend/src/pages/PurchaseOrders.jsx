@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useAppState } from '../context/StateContext';
-import Sidebar from '../components/Sidebar';
-import Header from '../components/Header';
+import Layout from '../components/Layout';
 
 const poBadge = (status) => {
   const map = {
@@ -83,12 +82,8 @@ const PurchaseOrders = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#F7F9FC]">
-      <Sidebar />
-      <div className="flex-1 ml-sidebar_width pt-header_height min-h-screen flex flex-col">
-        <Header title={activeTab === 'POs' ? 'Purchase Orders' : 'Invoices'} />
-
-        <main className="p-xl max-w-container_max_width w-full mx-auto flex-1 flex flex-col gap-lg animate-fade-in">
+    <Layout title={activeTab === 'POs' ? 'Purchase Orders' : 'Invoices'}>
+      <div className="max-w-[1400px] mx-auto space-y-5">
 
           {/* Tabs */}
           <div className="flex border-b border-outline-variant gap-lg">
@@ -329,7 +324,6 @@ const PurchaseOrders = () => {
               </>
             )}
           </div>
-        </main>
       </div>
 
       {/* Email modal */}
@@ -371,11 +365,11 @@ const PurchaseOrders = () => {
 
       {/* Toast */}
       {toast && (
-        <div className="fixed bottom-xl left-1/2 -translate-x-1/2 bg-inverse-surface text-inverse-on-surface px-lg py-sm rounded-full text-[13px] font-semibold shadow-lg z-50 animate-fade-in">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-800 text-white px-5 py-2.5 rounded-full text-[13px] font-semibold shadow-lg z-50 animate-fade-in">
           {toast}
         </div>
       )}
-    </div>
+    </Layout>
   );
 };
 

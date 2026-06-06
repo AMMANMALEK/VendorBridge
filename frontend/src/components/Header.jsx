@@ -1,98 +1,195 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppState } from '../context/StateContext';
 
-const Header = ({ title }) => {
+const Header = ({ title, onToggleSidebar }) => {
   const { user, logout, approvals } = useAppState();
-  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const navigate = useNavigate();
+  const [dropdownOpen, setDropdownOpen]   = useState(false);
+  const [notifOpen,    setNotifOpen]      = useState(false);
   const pendingApprovals = approvals.filter(a => a.status === 'Pending');
 
   const handleLogout = () => {
-    if (confirm("Are you sure you want to sign out?")) {
+    setDropdownOpen(false);
+    if (window.confirm('Sign out of VendorBridge?')) {
       logout();
+      navigate('/login');
     }
   };
 
+  const role = user?.role || 'officer';
+  const ROLE_CONFIG = {
+    admin:   { label: 'Administrator',       color: '#7C3AED', bg: '#EDE9FE' },
+    officer: { label: 'Procurement Officer', color: '#2563EB', bg: '#DBEAFE' },
+    manager: { label: 'Manager',             color: '#059669', bg: '#D1FAE5' },
+    vendor:  { label: 'Vendor',              color: '#D97706', bg: '#FEF3C7' },
+  };
+  const rCfg = ROLE_CONFIG[role] || ROLE_CONFIG.officer;
+
+  const userInitials = (user?.name || 'VB')
+    .split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase();
+
   return (
-    <header className="fixed top-0 right-0 h-header_height z-10 bg-white border-b border-outline-variant flex justify-between items-center px-xl ml-sidebar_width w-[calc(100%-theme(spacing.sidebar_width))] shadow-sm">
-      <div className="flex items-center gap-lg flex-1">
-        <h2 className="font-h3 text-h3 text-on-surface lg:block hidden">{title}</h2>
-        <div className="relative w-full max-w-md ml-4">
-          <span className="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-outline">search</span>
+    <header
+      className="app-header-shell fixed top-0 z-10 flex items-center justify-between bg-white px-5"
+      style={{
+        height: 64,
+        borderBottom: '1px solid #E8EDF5',
+        boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+      }}
+    >
+      {/* Left — toggle + title */}
+      <div className="flex items-center gap-3 flex-1 min-w-0">
+        <div className="h-5 w-px bg-slate-200 flex-shrink-0" />
+
+        {/* Breadcrumb / Title */}
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-slate-400 text-sm font-medium hidden sm:block">VendorBridge</span>
+          <span className="text-slate-300 hidden sm:block">/</span>
+          <h2 className="text-slate-800 font-semibold text-[15px] truncate">{title}</h2>
+        </div>
+
+        {/* Search */}
+        <div className="relative ml-4 hidden md:flex flex-1 max-w-xs">
+          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" style={{ fontSize: 18 }}>search</span>
           <input
-            className="w-full pl-xl pr-md py-xs bg-surface-container-low border border-outline-variant rounded-lg font-body-md focus:ring-2 focus:ring-primary focus:border-primary outline-none text-[14px]"
-            placeholder="Search orders, vendors, or invoices..."
+            className="w-full h-9 pl-9 pr-3 bg-slate-50 border border-slate-200 rounded-xl text-[13px] text-slate-700 placeholder-slate-400 outline-none focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
+            placeholder="Search vendors, orders, RFQs…"
             type="text"
           />
         </div>
       </div>
 
-      <div className="flex items-center gap-md relative">
+      {/* Right actions */}
+      <div className="flex items-center gap-1 flex-shrink-0">
+
         {/* Notifications */}
-        <div className="relative group">
-          <button className="p-xs text-on-surface-variant hover:bg-surface-container-low rounded-full transition-transform active:scale-95 flex items-center justify-center">
-            <span className="material-symbols-outlined">notifications</span>
+        <div className="relative">
+          <button
+            onClick={() => { setNotifOpen(v => !v); setDropdownOpen(false); }}
+            className="relative w-9 h-9 flex items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-all"
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 22 }}>notifications</span>
             {pendingApprovals.length > 0 && (
-              <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-error rounded-full ring-2 ring-white"></span>
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white" />
             )}
           </button>
-          
-          {/* Notifications Dropdown */}
-          <div className="absolute right-0 mt-2 w-80 bg-white border border-outline-variant rounded-xl shadow-lg opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity z-50 duration-200 p-sm">
-            <h4 className="font-semibold text-body-md border-b pb-sm mb-sm px-sm">Recent Tasks</h4>
-            {pendingApprovals.length === 0 ? (
-              <p className="text-on-surface-variant text-body-sm p-md text-center">No pending notifications</p>
-            ) : (
-              <div className="space-y-sm max-h-60 overflow-y-auto">
-                {pendingApprovals.slice(0, 3).map(a => (
-                  <div key={a.id} className="p-sm bg-surface-container-low hover:bg-surface-container rounded-lg text-left text-body-sm transition-colors">
-                    <p className="font-semibold">{a.type}</p>
-                    <p className="text-[11px] text-on-surface-variant">{a.title}</p>
-                    <p className="text-[11px] text-primary mt-1">₹{a.amount?.toLocaleString()}</p>
+
+          {notifOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setNotifOpen(false)} />
+              <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl border border-slate-200 shadow-xl z-50 overflow-hidden animate-scale-in">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+                  <h4 className="font-semibold text-[14px] text-slate-800">Notifications</h4>
+                  {pendingApprovals.length > 0 && (
+                    <span className="bg-red-100 text-red-600 text-[11px] font-bold px-2 py-0.5 rounded-full">
+                      {pendingApprovals.length} pending
+                    </span>
+                  )}
+                </div>
+                <div className="max-h-72 overflow-y-auto">
+                  {pendingApprovals.length === 0 ? (
+                    <div className="flex flex-col items-center py-8 text-slate-400">
+                      <span className="material-symbols-outlined text-4xl mb-2" style={{ fontSize: 36, fontVariationSettings: "'FILL' 1" }}>notifications_none</span>
+                      <p className="text-[13px]">All caught up</p>
+                    </div>
+                  ) : (
+                    pendingApprovals.slice(0, 5).map(a => (
+                      <div
+                        key={a.id}
+                        className="px-4 py-3 hover:bg-slate-50 border-b border-slate-50 cursor-pointer transition-colors"
+                        onClick={() => { navigate('/approvals'); setNotifOpen(false); }}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <span className="material-symbols-outlined text-amber-600" style={{ fontSize: 16 }}>task_alt</span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[13px] font-semibold text-slate-800 truncate">{a.type}</p>
+                            <p className="text-[12px] text-slate-500 truncate">{a.title}</p>
+                            <p className="text-[11px] text-indigo-600 mt-0.5 font-medium">₹{a.amount?.toLocaleString()}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+                {pendingApprovals.length > 0 && (
+                  <div className="px-4 py-2.5 border-t border-slate-100">
+                    <button
+                      className="text-indigo-600 text-[12px] font-semibold hover:underline"
+                      onClick={() => { navigate('/approvals'); setNotifOpen(false); }}
+                    >
+                      View all approvals →
+                    </button>
                   </div>
-                ))}
+                )}
               </div>
-            )}
-          </div>
+            </>
+          )}
         </div>
 
-        <button className="p-xs text-on-surface-variant hover:bg-surface-container-low rounded-full transition-transform active:scale-95">
-          <span className="material-symbols-outlined">settings</span>
+        {/* Settings */}
+        <button className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-all">
+          <span className="material-symbols-outlined" style={{ fontSize: 22 }}>settings</span>
         </button>
 
-        <div className="h-8 w-px bg-outline-variant mx-xs"></div>
+        <div className="w-px h-6 bg-slate-200 mx-1" />
 
-        {/* User profile dropdown */}
+        {/* User profile */}
         <div className="relative">
-          <div 
-            className="flex items-center gap-sm cursor-pointer select-none"
-            onClick={() => setDropdownOpen(!dropdownOpen)}
+          <button
+            className="flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-xl hover:bg-slate-50 transition-all cursor-pointer"
+            onClick={() => { setDropdownOpen(v => !v); setNotifOpen(false); }}
           >
-            <div className="text-right">
-              <p className="font-label-md text-on-surface text-[13px] font-semibold">{user ? user.name : 'Rahul Sharma'}</p>
-              <p className="text-xs text-on-surface-variant">{user ? user.role : 'Procurement Manager'}</p>
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center text-[13px] font-bold flex-shrink-0"
+              style={{ background: rCfg.bg, color: rCfg.color }}>
+              {userInitials}
             </div>
-            <img
-              alt="User Avatar"
-              className="w-10 h-10 rounded-full border border-outline-variant object-cover hover:border-primary transition-colors"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuAtLBhNBj4lf05G23s0F7poFB4ZXD32SUjnuHJgrmJw5Hq6dNEbm6GsR7AlnQOOzzJEjzrPz20UhoH2rXBZjSGcqg8wvNehNgNve5sxXMS9Y8HLaScpKwSpaj2kMD6s8goSPUamZ7tGKZc6EOvNS3Ma0hLqdGf2FdESO_-U28Yve4ORv9YrTABHnOd1EgZ7JB1VttcBVj0x9-F6L7iVRHPDT_xora_cJsPsMmRvQGxPU6OpiVGejm1yWCITRB_sjdJC8NlCE-pMcZ8k"
-            />
-          </div>
+            <div className="text-left hidden sm:block">
+              <p className="text-[13px] font-semibold text-slate-800 leading-tight">{user?.name || 'User'}</p>
+              <p className="text-[11px] text-slate-400 leading-tight">{rCfg.label}</p>
+            </div>
+            <span className="material-symbols-outlined text-slate-400 hidden sm:block" style={{ fontSize: 16 }}>
+              {dropdownOpen ? 'expand_less' : 'expand_more'}
+            </span>
+          </button>
 
           {dropdownOpen && (
             <>
-              <div className="fixed inset-0 z-40" onClick={() => setDropdownOpen(false)}></div>
-              <div className="absolute right-0 mt-sm w-48 bg-white border border-outline-variant rounded-xl shadow-lg z-50 py-sm">
-                <div className="px-md py-sm border-b border-outline-variant/50">
-                  <p className="font-semibold text-body-sm truncate">{user?.email}</p>
-                  <p className="text-[11px] text-on-surface-variant truncate">{user?.company}</p>
+              <div className="fixed inset-0 z-40" onClick={() => setDropdownOpen(false)} />
+              <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl border border-slate-200 shadow-xl z-50 overflow-hidden animate-scale-in">
+                {/* User info */}
+                <div className="px-4 py-3 border-b border-slate-100 bg-slate-50">
+                  <p className="text-[13px] font-semibold text-slate-800 truncate">{user?.name}</p>
+                  <p className="text-[12px] text-slate-500 truncate mt-0.5">{user?.email}</p>
+                  <span className="mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-semibold"
+                    style={{ background: rCfg.bg, color: rCfg.color }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: 11 }}>verified</span>
+                    {rCfg.label}
+                  </span>
                 </div>
-                <button 
-                  onClick={handleLogout}
-                  className="w-full text-left px-md py-sm hover:bg-error-container hover:text-on-error-container text-error text-body-sm flex items-center gap-sm transition-colors mt-xs"
-                >
-                  <span className="material-symbols-outlined text-[18px]">logout</span>
-                  Sign Out
-                </button>
+
+                <div className="py-1.5">
+                  <button className="w-full text-left px-4 py-2.5 text-[13px] text-slate-600 hover:bg-slate-50 flex items-center gap-3 transition-colors">
+                    <span className="material-symbols-outlined text-slate-400" style={{ fontSize: 18 }}>person</span>
+                    My Profile
+                  </button>
+                  <button className="w-full text-left px-4 py-2.5 text-[13px] text-slate-600 hover:bg-slate-50 flex items-center gap-3 transition-colors">
+                    <span className="material-symbols-outlined text-slate-400" style={{ fontSize: 18 }}>settings</span>
+                    Preferences
+                  </button>
+                </div>
+
+                <div className="border-t border-slate-100 py-1.5">
+                  <button
+                    onClick={handleLogout}
+                    className="w-full text-left px-4 py-2.5 text-[13px] text-red-500 hover:bg-red-50 flex items-center gap-3 transition-colors font-medium"
+                  >
+                    <span className="material-symbols-outlined text-red-400" style={{ fontSize: 18 }}>logout</span>
+                    Sign Out
+                  </button>
+                </div>
               </div>
             </>
           )}
