@@ -7,16 +7,16 @@ import { compareQuotations } from '../quotations/quotations.controller';
 const router = Router();
 
 router.route('/')
-  .post(protect, authorize('admin', 'procurement_officer'), createRFQ)
+  .post(protect, authorize('admin', 'officer'), createRFQ)
   .get(protect, getRFQs);
 
 router.route('/:id')
   .get(protect, getRFQById)
-  .put(protect, authorize('admin', 'procurement_officer'), updateRFQ);
+  .put(protect, authorize('admin', 'officer'), updateRFQ);
 
 router.get('/:id/quotations', protect, getQuotationsByRFQ);
-router.get('/:id/compare', protect, authorize('admin', 'procurement_officer', 'manager'), compareQuotations);
-router.post('/:id/attachments', protect, authorize('admin', 'procurement_officer'), upload.single('file'), uploadAttachment);
-router.post('/:id/vendors', protect, authorize('admin', 'procurement_officer'), assignVendors);
+router.get('/:id/compare', protect, authorize('admin', 'officer', 'manager'), compareQuotations);
+router.post('/:id/attachments', protect, authorize('admin', 'officer'), upload.single('file'), uploadAttachment);
+router.post('/:id/vendors', protect, authorize('admin', 'officer'), assignVendors);
 
 export default router;

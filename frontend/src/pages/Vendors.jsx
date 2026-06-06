@@ -1,37 +1,46 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppState } from '../context/StateContext';
-import Sidebar from '../components/Sidebar';
-import Header from '../components/Header';
+import Layout from '../components/Layout';
 
 const STATUS_TABS = ['All', 'Active', 'Pending', 'Blocked'];
 
-const statusBadge = (status) => {
-  switch (status) {
-    case 'Active':
-      return <span className="px-sm py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">🟢 Active</span>;
-    case 'Pending':
-      return <span className="px-sm py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">🟡 Pending</span>;
-    case 'Blocked':
-      return <span className="px-sm py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">🔴 Blocked</span>;
-    default:
-      return <span className="px-sm py-1 rounded-full text-xs font-semibold bg-surface-variant text-on-surface-variant">{status}</span>;
-  }
+const StatusBadge = ({ status }) => {
+  const MAP = {
+    Active:  { cls: 'badge badge-active',   icon: 'check_circle',  label: 'Active'  },
+    Pending: { cls: 'badge badge-pending',  icon: 'schedule',      label: 'Pending' },
+    Blocked: { cls: 'badge badge-blocked',  icon: 'block',         label: 'Blocked' },
+  };
+  const cfg = MAP[status] || { cls: 'badge badge-draft', icon: 'info', label: status };
+  return (
+    <span className={cfg.cls}>
+      <span className="material-symbols-outlined" style={{ fontSize: 12, fontVariationSettings: "'FILL' 1" }}>{cfg.icon}</span>
+      {cfg.label}
+    </span>
+  );
 };
 
 const Vendors = () => {
   const { vendors, addVendor, updateVendorStatus, user } = useAppState();
+  const navigate = useNavigate();
   const role = user?.role || 'officer';
-  const isAdmin = role === 'admin';
+
+  // Access rules:
+  //   admin    → can approve / block vendors, NO onboarding
+  //   officer  → can onboard vendors (add), NO approve/block
+  //   manager  → read-only
+  const isAdmin    = role === 'admin';
+  const isOfficer  = role === 'officer';
   const isReadOnly = role === 'manager';
 
-  const [activeTab, setActiveTab] = useState('All');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab,      setActiveTab]      = useState('All');
+  const [searchTerm,     setSearchTerm]     = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [selectedVendor, setSelectedVendor] = useState(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [newVendor, setNewVendor] = useState({ name: '', contact: '', category: 'IT Hardware', address: '' });
+  const [modalOpen,      setModalOpen]      = useState(false);
+  const [newVendor,      setNewVendor]      = useState({ name: '', contact: '', category: 'IT Hardware', address: '' });
+  const [saving,         setSaving]         = useState(false);
 
-  // Keep selectedVendor in sync when vendors list changes (e.g. after status update)
   useEffect(() => {
     if (selectedVendor) {
       const updated = vendors.find(v => v.id === selectedVendor.id);
@@ -39,24 +48,23 @@ const Vendors = () => {
     }
   }, [vendors]);
 
-  // Set default selection
   useEffect(() => {
     if (!selectedVendor && vendors.length > 0) setSelectedVendor(vendors[0]);
   }, []);
 
-  const handleAddVendor = (e) => {
+  const handleAddVendor = async (e) => {
     e.preventDefault();
-    if (newVendor.name && newVendor.contact) {
-      const added = addVendor(newVendor);
-      setSelectedVendor(added);
-      setModalOpen(false);
-      setNewVendor({ name: '', contact: '', category: 'IT Hardware', address: '' });
-    }
+    if (!newVendor.name || !newVendor.contact) return;
+    setSaving(true);
+    await new Promise(r => setTimeout(r, 400));
+    const added = addVendor(newVendor);
+    setSelectedVendor(added);
+    setModalOpen(false);
+    setNewVendor({ name: '', contact: '', category: 'IT Hardware', address: '' });
+    setSaving(false);
   };
 
-  const handleStatusChange = (vendorId, newStatus) => {
-    updateVendorStatus(vendorId, newStatus);
-  };
+  const handleStatusChange = (vendorId, newStatus) => updateVendorStatus(vendorId, newStatus);
 
   const tabCounts = STATUS_TABS.reduce((acc, tab) => {
     acc[tab] = tab === 'All' ? vendors.length : vendors.filter(v => v.status === tab).length;
@@ -64,288 +72,394 @@ const Vendors = () => {
   }, {});
 
   const filteredVendors = vendors.filter(v => {
-    const matchesTab = activeTab === 'All' || v.status === activeTab;
-    const matchesSearch = v.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          v.id.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = categoryFilter === 'All' || v.category === categoryFilter;
-    return matchesTab && matchesSearch && matchesCategory;
+    const matchTab   = activeTab === 'All' || v.status === activeTab;
+    const matchSearch = v.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        v.id.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchCat   = categoryFilter === 'All' || v.category === categoryFilter;
+    return matchTab && matchSearch && matchCat;
   });
 
-  return (
-    <div className="flex min-h-screen bg-[#F7F9FC]">
-      <Sidebar />
+  const ratingStars = (rating) => {
+    const val = parseFloat(rating) || 0;
+    return [1,2,3,4,5].map(s => (
+      <span
+        key={s}
+        className="material-symbols-outlined"
+        style={{ fontSize: 14, color: s <= Math.round(val) ? '#F59E0B' : '#E2E8F0', fontVariationSettings: "'FILL' 1" }}
+      >star</span>
+    ));
+  };
 
+  return (
+    <Layout title="Vendor Management">
+      <div className="flex flex-col lg:flex-row gap-5 h-full">
+
+<<<<<<< HEAD
       <div className="flex-1 ml-[240px] pt-14 min-h-screen flex flex-col">
         <Header title="Vendor Management" />
 
         <main className="p-xl max-w-7xl w-full mx-auto flex-1 flex flex-col lg:flex-row gap-lg animate-fade-in">
           {/* Main List */}
           <section className="flex-1 bg-white rounded-xl border border-outline-variant custom-shadow flex flex-col overflow-hidden">
+=======
+        {/* ── Main table panel ── */}
+        <section className="flex-1 card flex flex-col overflow-hidden">
 
-            {/* Status Tabs */}
-            <div className="px-lg pt-lg border-b border-outline-variant flex items-center gap-lg overflow-x-auto no-scrollbar">
-              {STATUS_TABS.map(tab => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`pb-sm font-semibold text-[13px] whitespace-nowrap relative transition-colors flex items-center gap-xs ${
-                    activeTab === tab ? 'text-primary' : 'text-on-surface-variant hover:text-on-surface'
-                  }`}
-                >
-                  {tab}
-                  <span className={`text-[11px] px-1.5 py-0.5 rounded-full font-bold ${
-                    activeTab === tab ? 'bg-primary text-white' : 'bg-surface-container-high text-on-surface-variant'
-                  }`}>
-                    {tabCounts[tab]}
-                  </span>
-                  {activeTab === tab && (
-                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-t"></div>
-                  )}
-                </button>
-              ))}
-            </div>
+          {/* Status Tabs */}
+          <div className="flex items-center gap-1 px-5 pt-4 border-b border-slate-100 overflow-x-auto no-scrollbar">
+            {STATUS_TABS.map(tab => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`relative flex items-center gap-1.5 px-4 py-2.5 text-[13px] font-medium rounded-t-lg whitespace-nowrap transition-colors ${
+                  activeTab === tab
+                    ? 'text-indigo-600 bg-indigo-50'
+                    : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                {tab}
+                <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center ${
+                  activeTab === tab ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'
+                }`}>
+                  {tabCounts[tab]}
+                </span>
+                {activeTab === tab && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-500 rounded-t" />
+                )}
+              </button>
+            ))}
+          </div>
+>>>>>>> f5f168f131295355d059a023d5db22fba0abdab1
 
-            {/* Toolbar */}
-            <div className="p-lg border-b border-outline-variant flex flex-col md:flex-row md:items-center justify-between gap-md bg-surface-container-lowest">
-              <div className="flex flex-1 items-center gap-md max-w-lg">
-                <div className="relative flex-1">
-                  <span className="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-outline">search</span>
-                  <input
-                    className="w-full pl-xl pr-md py-xs bg-white border border-outline-variant rounded-lg font-body-md focus:ring-2 focus:ring-primary focus:border-primary outline-none text-[14px]"
-                    placeholder="Search by ID or name..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
+          {/* Toolbar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4 bg-slate-50/60 border-b border-slate-100">
+            <div className="flex items-center gap-2 flex-1 max-w-md">
+              <div className="relative flex-1">
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" style={{ fontSize: 18 }}>search</span>
+                <input
+                  className="w-full h-9 pl-9 pr-3 rounded-xl border border-slate-200 bg-white text-[13px] text-slate-700 placeholder-slate-400 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
+                  placeholder="Search vendor name or ID…"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <div className="relative">
                 <select
-                  className="px-md py-xs bg-white border border-outline-variant rounded-lg font-body-md focus:ring-2 focus:ring-primary focus:border-primary text-[14px] outline-none"
+                  className="h-9 pl-3 pr-8 rounded-xl border border-slate-200 bg-white text-[13px] text-slate-700 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all appearance-none"
                   value={categoryFilter}
                   onChange={(e) => setCategoryFilter(e.target.value)}
                 >
                   <option value="All">All Categories</option>
-                  <option>IT Hardware</option>
-                  <option>Logistics</option>
-                  <option>Office Supplies</option>
-                  <option>Industrial Parts</option>
-                  <option>Construction</option>
-                  <option>Services</option>
+                  {['IT Hardware','Logistics','Office Supplies','Industrial Parts','Construction','Services'].map(c => (
+                    <option key={c}>{c}</option>
+                  ))}
                 </select>
+                <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" style={{ fontSize: 15 }}>expand_more</span>
               </div>
+            </div>
 
-              {!isReadOnly && (
+            <div className="flex items-center gap-2">
+              {/* Officer: can onboard vendors */}
+              {isOfficer && (
                 <button
                   onClick={() => setModalOpen(true)}
-                  className="bg-primary text-white px-lg py-sm rounded-lg hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-xs font-semibold text-[13px]"
+                  className="h-9 px-4 rounded-xl text-white font-semibold text-[13px] flex items-center gap-1.5 transition-all hover:opacity-90 active:scale-[0.98]"
+                  style={{ background: 'linear-gradient(135deg, #4F46E5, #6366F1)', boxShadow: '0 2px 8px rgba(79,70,229,0.3)' }}
                 >
-                  <span className="material-symbols-outlined text-[18px]">add</span>
+                  <span className="material-symbols-outlined" style={{ fontSize: 16 }}>add</span>
                   Onboard Vendor
                 </button>
               )}
+              {isAdmin && (
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-50 border border-purple-200 text-purple-700 text-[12px] font-semibold">
+                  <span className="material-symbols-outlined" style={{ fontSize: 15 }}>shield_person</span>
+                  Admin — approval mode
+                </div>
+              )}
               {isReadOnly && (
-                <span className="text-xs text-on-surface-variant bg-surface-container-low border border-outline-variant px-md py-sm rounded-lg font-medium">
-                  👁️ Read-only — Manager view
-                </span>
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-500 text-[12px] font-semibold">
+                  <span className="material-symbols-outlined" style={{ fontSize: 15 }}>visibility</span>
+                  View only
+                </div>
               )}
             </div>
+          </div>
 
-            {/* Table */}
-            <div className="flex-1 overflow-x-auto">
-              <table className="w-full text-left">
-                <thead className="bg-surface-container-low border-b border-outline-variant">
+          {/* Table */}
+          <div className="flex-1 overflow-x-auto">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Vendor ID</th>
+                  <th>Vendor Name</th>
+                  <th>Category</th>
+                  <th>Location</th>
+                  <th>Rating</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredVendors.length === 0 ? (
                   <tr>
-                    <th className="px-lg py-sm font-label-md text-on-surface-variant text-[12px] uppercase">Vendor ID</th>
-                    <th className="px-lg py-sm font-label-md text-on-surface-variant text-[12px] uppercase">Vendor Name</th>
-                    <th className="px-lg py-sm font-label-md text-on-surface-variant text-[12px] uppercase">Category</th>
-                    <th className="px-lg py-sm font-label-md text-on-surface-variant text-[12px] uppercase">Rating</th>
-                    <th className="px-lg py-sm font-label-md text-on-surface-variant text-[12px] uppercase">Status</th>
+                    <td colSpan="6" className="text-center py-16 text-slate-400">
+                      <span className="material-symbols-outlined text-5xl block mb-2" style={{ fontSize: 42 }}>storefront</span>
+                      No {activeTab !== 'All' ? activeTab.toLowerCase() + ' ' : ''}vendors found
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-outline-variant">
-                  {filteredVendors.length === 0 ? (
-                    <tr>
-                      <td colSpan="5" className="text-center py-xl text-on-surface-variant">
-                        No {activeTab !== 'All' ? activeTab.toLowerCase() : ''} vendors found.
+                ) : (
+                  filteredVendors.map(vendor => (
+                    <tr
+                      key={vendor.id}
+                      onClick={() => setSelectedVendor(vendor)}
+                      className="cursor-pointer"
+                      style={{
+                        background: selectedVendor?.id === vendor.id ? '#EEF2FF' : '',
+                        borderLeft: selectedVendor?.id === vendor.id ? '3px solid #6366F1' : '3px solid transparent',
+                      }}
+                    >
+                      <td>
+                        <span className="text-[12px] font-mono font-semibold text-slate-400">{vendor.id}</span>
                       </td>
+                      <td>
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-xl bg-indigo-100 flex items-center justify-center flex-shrink-0">
+                            <span className="material-symbols-outlined text-indigo-500" style={{ fontSize: 16 }}>storefront</span>
+                          </div>
+                          <span className="font-semibold text-slate-800">{vendor.name}</span>
+                        </div>
+                      </td>
+                      <td>
+                        <span className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg text-[12px] font-medium">{vendor.category}</span>
+                      </td>
+                      <td className="text-slate-500">{vendor.address || '—'}</td>
+                      <td>
+                        <div className="flex items-center gap-1">
+                          {ratingStars(vendor.rating)}
+                          <span className="text-[12px] text-slate-500 ml-1 font-medium">{vendor.rating}</span>
+                        </div>
+                      </td>
+                      <td><StatusBadge status={vendor.status} /></td>
                     </tr>
-                  ) : (
-                    filteredVendors.map(vendor => (
-                      <tr
-                        key={vendor.id}
-                        onClick={() => setSelectedVendor(vendor)}
-                        className={`hover:bg-surface-container-low transition-colors cursor-pointer ${
-                          selectedVendor?.id === vendor.id ? 'bg-primary-container/10 border-l-4 border-primary' : ''
-                        }`}
-                      >
-                        <td className="px-lg py-md font-label-md text-[13px]">{vendor.id}</td>
-                        <td className="px-lg py-md text-body-md text-[14px] font-semibold">{vendor.name}</td>
-                        <td className="px-lg py-md text-body-md text-[14px]">{vendor.category}</td>
-                        <td className="px-lg py-md text-body-md text-[14px]">
-                          <span className="flex items-center gap-1">
-                            <span className="material-symbols-outlined text-[16px] text-amber-500 font-variation-fill">star</span>
-                            {vendor.rating}
-                          </span>
-                        </td>
-                        <td className="px-lg py-md">{statusBadge(vendor.status)}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
 
-          {/* Detail Panel */}
-          {selectedVendor && (
-            <aside className="w-full lg:w-[350px] bg-white rounded-xl border border-outline-variant custom-shadow p-lg flex flex-col gap-lg animate-fade-in self-start">
-              <div className="flex justify-between items-start border-b pb-md">
-                <div>
-                  <h3 className="font-h3 text-h3 text-on-surface font-semibold text-[18px]">{selectedVendor.name}</h3>
-                  <span className="text-[11px] bg-outline-variant/30 text-on-surface-variant font-label-md px-2 py-0.5 rounded uppercase">{selectedVendor.id}</span>
+          <div className="px-5 py-3 border-t border-slate-100 flex items-center justify-between bg-slate-50/40">
+            <p className="text-[12px] text-slate-400">
+              Showing <span className="font-semibold text-slate-600">{filteredVendors.length}</span> of {vendors.length} vendors
+            </p>
+          </div>
+        </section>
+
+        {/* ── Detail panel ── */}
+        {selectedVendor && (
+          <aside className="w-full lg:w-[320px] card p-5 flex flex-col gap-4 self-start animate-scale-in">
+            {/* Header */}
+            <div className="flex items-start justify-between pb-4 border-b border-slate-100">
+              <div>
+                <div className="w-12 h-12 rounded-2xl bg-indigo-100 flex items-center justify-center mb-3">
+                  <span className="material-symbols-outlined text-indigo-500" style={{ fontSize: 24 }}>storefront</span>
                 </div>
-                {statusBadge(selectedVendor.status)}
+                <h3 className="text-slate-800 font-bold text-[16px] leading-tight">{selectedVendor.name}</h3>
+                <p className="text-slate-400 text-[12px] font-mono mt-0.5">{selectedVendor.id}</p>
               </div>
+              <StatusBadge status={selectedVendor.status} />
+            </div>
 
-              <div className="space-y-md">
-                <div>
-                  <p className="text-xs text-on-surface-variant uppercase font-semibold">Category</p>
-                  <p className="text-body-md font-medium text-[14px]">{selectedVendor.category}</p>
+            {/* Info */}
+            <div className="space-y-3">
+              {[
+                { label: 'Category',      value: selectedVendor.category,            icon: 'category' },
+                { label: 'Contact Email', value: selectedVendor.contact,             icon: 'mail',    link: true },
+                { label: 'Location',      value: selectedVendor.address || '—',      icon: 'location_on' },
+              ].map(row => (
+                <div key={row.label} className="flex items-start gap-3">
+                  <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span className="material-symbols-outlined text-slate-500" style={{ fontSize: 15 }}>{row.icon}</span>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">{row.label}</p>
+                    {row.link ? (
+                      <a href={`mailto:${row.value}`} className="text-[13px] text-indigo-600 font-medium hover:underline">{row.value}</a>
+                    ) : (
+                      <p className="text-[13px] text-slate-700 font-medium">{row.value}</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+
+              {/* Rating */}
+              <div className="flex items-start gap-3">
+                <div className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="material-symbols-outlined text-amber-500" style={{ fontSize: 15, fontVariationSettings: "'FILL' 1" }}>star</span>
                 </div>
                 <div>
-                  <p className="text-xs text-on-surface-variant uppercase font-semibold">Contact Email</p>
-                  <p className="text-body-md font-medium text-[14px] text-primary">{selectedVendor.contact}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-on-surface-variant uppercase font-semibold">Location</p>
-                  <p className="text-body-md font-medium text-[14px]">{selectedVendor.address || '—'}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-on-surface-variant uppercase font-semibold">Rating</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <div className="flex text-amber-500">
-                      {[1, 2, 3, 4, 5].map(s => (
-                        <span key={s} className="material-symbols-outlined text-[18px] font-variation-fill">star</span>
-                      ))}
-                    </div>
-                    <span className="font-semibold text-[14px]">{selectedVendor.rating} / 5.0</span>
+                  <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Rating</p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <div className="flex">{ratingStars(selectedVendor.rating)}</div>
+                    <span className="text-[13px] font-semibold text-slate-700">{selectedVendor.rating} / 5.0</span>
                   </div>
                 </div>
               </div>
+            </div>
 
-              {/* Admin actions */}
-              {isAdmin && (
-                <div className="border-t pt-lg space-y-sm">
-                  <p className="text-xs text-on-surface-variant uppercase font-semibold mb-sm">Admin Actions</p>
+            {/* ── Admin actions: approve / block only ── */}
+            {isAdmin && (
+              <div className="border-t border-slate-100 pt-4 space-y-2">
+                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-3">Vendor Actions</p>
 
-                  {selectedVendor.status === 'Pending' && (
-                    <>
-                      <button
-                        onClick={() => handleStatusChange(selectedVendor.id, 'Active')}
-                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-sm rounded-lg font-semibold text-[13px] transition-all flex items-center justify-center gap-xs"
-                      >
-                        <span className="material-symbols-outlined text-[16px]">check_circle</span>
-                        Approve Vendor
-                      </button>
-                      <button
-                        onClick={() => handleStatusChange(selectedVendor.id, 'Blocked')}
-                        className="w-full border border-error text-error hover:bg-error-container py-sm rounded-lg font-semibold text-[13px] transition-colors flex items-center justify-center gap-xs"
-                      >
-                        <span className="material-symbols-outlined text-[16px]">block</span>
-                        Reject & Block
-                      </button>
-                    </>
-                  )}
-
-                  {selectedVendor.status === 'Active' && (
-                    <button
-                      onClick={() => handleStatusChange(selectedVendor.id, 'Blocked')}
-                      className="w-full border border-error text-error hover:bg-error-container py-sm rounded-lg font-semibold text-[13px] transition-colors flex items-center justify-center gap-xs"
-                    >
-                      <span className="material-symbols-outlined text-[16px]">block</span>
-                      Block Vendor
-                    </button>
-                  )}
-
-                  {selectedVendor.status === 'Blocked' && (
+                {selectedVendor.status === 'Pending' && (
+                  <>
                     <button
                       onClick={() => handleStatusChange(selectedVendor.id, 'Active')}
-                      className="w-full bg-primary text-white hover:opacity-90 py-sm rounded-lg font-semibold text-[13px] transition-all flex items-center justify-center gap-xs"
+                      className="w-full h-10 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[13px] flex items-center justify-center gap-2 transition-all"
                     >
-                      <span className="material-symbols-outlined text-[16px]">lock_open</span>
-                      Unblock Vendor
+                      <span className="material-symbols-outlined" style={{ fontSize: 16 }}>check_circle</span>
+                      Approve Vendor
                     </button>
-                  )}
-                </div>
-              )}
+                    <button
+                      onClick={() => handleStatusChange(selectedVendor.id, 'Blocked')}
+                      className="w-full h-10 rounded-xl border border-red-300 text-red-600 hover:bg-red-50 font-semibold text-[13px] flex items-center justify-center gap-2 transition-all"
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: 16 }}>block</span>
+                      Reject & Block
+                    </button>
+                  </>
+                )}
 
-              {/* Officer actions */}
-              {!isReadOnly && !isAdmin && (
-                <div className="border-t pt-lg flex gap-sm">
-                  <button className="flex-1 border border-outline-variant hover:bg-surface-container-low text-on-surface py-sm rounded-lg font-semibold text-[13px] transition-colors">
-                    Edit Details
+                {selectedVendor.status === 'Active' && (
+                  <button
+                    onClick={() => handleStatusChange(selectedVendor.id, 'Blocked')}
+                    className="w-full h-10 rounded-xl border border-red-300 text-red-600 hover:bg-red-50 font-semibold text-[13px] flex items-center justify-center gap-2 transition-all"
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: 16 }}>block</span>
+                    Block Vendor
                   </button>
-                  <button className="flex-1 bg-primary text-white py-sm rounded-lg hover:opacity-90 transition-all font-semibold text-[13px]">
-                    Create RFQ
+                )}
+
+                {selectedVendor.status === 'Blocked' && (
+                  <button
+                    onClick={() => handleStatusChange(selectedVendor.id, 'Active')}
+                    className="w-full h-10 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-[13px] flex items-center justify-center gap-2 transition-all"
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: 16 }}>lock_open</span>
+                    Unblock Vendor
                   </button>
-                </div>
-              )}
+                )}
+              </div>
+            )}
 
-              {isReadOnly && (
-                <p className="text-xs text-on-surface-variant text-center border-t pt-md">Manager — view only access</p>
-              )}
-            </aside>
-          )}
-        </main>
-
-        {/* Onboarding Modal */}
-        {modalOpen && (
-          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-md animate-fade-in">
-            <div className="bg-white rounded-xl border border-outline-variant shadow-2xl w-full max-w-md p-lg space-y-md">
-              <div className="flex justify-between items-center border-b pb-sm">
-                <h3 className="font-h3 text-h3 text-on-surface font-semibold text-[18px]">Onboard New Vendor</h3>
-                <button onClick={() => setModalOpen(false)} className="text-on-surface-variant hover:text-on-surface">
-                  <span className="material-symbols-outlined">close</span>
+            {/* Officer actions */}
+            {isOfficer && (
+              <div className="border-t border-slate-100 pt-4 flex gap-2">
+                <button className="flex-1 h-10 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold text-[13px] transition-all">
+                  Edit Details
+                </button>
+                <button
+                  onClick={() => navigate('/create-rfq')}
+                  className="flex-1 h-10 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 font-semibold text-[13px] transition-all"
+                >
+                  Create RFQ
                 </button>
               </div>
-              <form onSubmit={handleAddVendor} className="space-y-md">
-                <div className="space-y-xs">
-                  <label className="font-label-md text-on-surface-variant block uppercase text-[11px] font-semibold" htmlFor="vname">Vendor / Company Name</label>
-                  <input className="w-full h-10 px-md bg-white border border-outline-variant rounded-lg font-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-[14px]"
-                    id="vname" required type="text" placeholder="e.g. Zen Distributors Ltd"
-                    value={newVendor.name} onChange={(e) => setNewVendor({ ...newVendor, name: e.target.value })} />
-                </div>
-                <div className="space-y-xs">
-                  <label className="font-label-md text-on-surface-variant block uppercase text-[11px] font-semibold" htmlFor="vcontact">Contact Email</label>
-                  <input className="w-full h-10 px-md bg-white border border-outline-variant rounded-lg font-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-[14px]"
-                    id="vcontact" required type="email" placeholder="e.g. sales@zen.com"
-                    value={newVendor.contact} onChange={(e) => setNewVendor({ ...newVendor, contact: e.target.value })} />
-                </div>
-                <div className="space-y-xs">
-                  <label className="font-label-md text-on-surface-variant block uppercase text-[11px] font-semibold" htmlFor="vcat">Business Category</label>
-                  <select className="w-full h-10 px-md bg-white border border-outline-variant rounded-lg font-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-[14px]"
-                    id="vcat" value={newVendor.category} onChange={(e) => setNewVendor({ ...newVendor, category: e.target.value })}>
-                    <option>IT Hardware</option>
-                    <option>Logistics</option>
-                    <option>Office Supplies</option>
-                    <option>Industrial Parts</option>
-                    <option>Construction</option>
-                    <option>Services</option>
-                  </select>
-                </div>
-                <div className="space-y-xs">
-                  <label className="font-label-md text-on-surface-variant block uppercase text-[11px] font-semibold" htmlFor="vaddr">Office Address</label>
-                  <input className="w-full h-10 px-md bg-white border border-outline-variant rounded-lg font-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-[14px]"
-                    id="vaddr" type="text" placeholder="e.g. Bengaluru, KA"
-                    value={newVendor.address} onChange={(e) => setNewVendor({ ...newVendor, address: e.target.value })} />
-                </div>
-                <button className="w-full h-10 bg-primary text-white font-semibold rounded-lg hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-sm mt-md" type="submit">
-                  Onboard Partner
-                </button>
-              </form>
-            </div>
-          </div>
+            )}
+
+            {isReadOnly && (
+              <div className="border-t border-slate-100 pt-3">
+                <p className="text-[12px] text-slate-400 text-center">Manager — view only</p>
+              </div>
+            )}
+          </aside>
         )}
       </div>
-    </div>
+
+      {/* ── Onboard Vendor Modal (officer only) ── */}
+      {modalOpen && isOfficer && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+              <div>
+                <h3 className="font-bold text-slate-800 text-[16px]">Onboard New Vendor</h3>
+                <p className="text-slate-400 text-[12px] mt-0.5">Add a vendor partner to the network</p>
+              </div>
+              <button
+                onClick={() => setModalOpen(false)}
+                className="w-8 h-8 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-all"
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>close</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleAddVendor} className="p-6 space-y-4">
+              {[
+                { id: 'vname',    label: 'Vendor / Company Name', icon: 'business', field: 'name',    type: 'text',  placeholder: 'e.g. Zen Distributors Ltd', required: true },
+                { id: 'vcontact', label: 'Contact Email',          icon: 'mail',    field: 'contact', type: 'email', placeholder: 'e.g. sales@zen.com',         required: true },
+                { id: 'vaddr',    label: 'Office Location',        icon: 'location_on', field: 'address', type: 'text', placeholder: 'e.g. Bengaluru, KA' },
+              ].map(row => (
+                <div key={row.id}>
+                  <label className="block text-[12px] font-semibold text-slate-500 mb-1.5 uppercase tracking-wide" htmlFor={row.id}>
+                    {row.label}{row.required && <span className="text-red-400 ml-0.5">*</span>}
+                  </label>
+                  <div className="relative">
+                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" style={{ fontSize: 16 }}>{row.icon}</span>
+                    <input
+                      id={row.id} type={row.type} required={row.required} placeholder={row.placeholder}
+                      value={newVendor[row.field]}
+                      onChange={(e) => setNewVendor(p => ({ ...p, [row.field]: e.target.value }))}
+                      className="w-full h-10 pl-9 pr-3 rounded-xl border border-slate-200 bg-slate-50 text-[13px] text-slate-800 placeholder-slate-400 outline-none focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all"
+                    />
+                  </div>
+                </div>
+              ))}
+
+              {/* Category select */}
+              <div>
+                <label className="block text-[12px] font-semibold text-slate-500 mb-1.5 uppercase tracking-wide" htmlFor="vcat">Business Category</label>
+                <div className="relative">
+                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" style={{ fontSize: 16 }}>category</span>
+                  <select
+                    id="vcat"
+                    value={newVendor.category}
+                    onChange={(e) => setNewVendor(p => ({ ...p, category: e.target.value }))}
+                    className="w-full h-10 pl-9 pr-4 rounded-xl border border-slate-200 bg-slate-50 text-[13px] text-slate-800 outline-none focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all appearance-none"
+                  >
+                    {['IT Hardware','Logistics','Office Supplies','Industrial Parts','Construction','Services'].map(c => (
+                      <option key={c}>{c}</option>
+                    ))}
+                  </select>
+                  <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" style={{ fontSize: 15 }}>expand_more</span>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setModalOpen(false)}
+                  className="flex-1 h-10 rounded-xl border border-slate-200 text-slate-600 font-semibold text-[13px] hover:bg-slate-50 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="flex-1 h-10 rounded-xl text-white font-semibold text-[13px] flex items-center justify-center gap-1.5 transition-all disabled:opacity-60"
+                  style={{ background: 'linear-gradient(135deg, #4F46E5, #6366F1)' }}
+                >
+                  {saving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : (
+                    <>
+                      <span className="material-symbols-outlined" style={{ fontSize: 16 }}>add</span>
+                      Onboard Partner
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </Layout>
   );
 };
 

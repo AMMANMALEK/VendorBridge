@@ -50,6 +50,17 @@ export class PurchaseOrdersService {
         userId, relatedId: po.id
       }
     });
+    if (po.vendor?.userId) {
+      await prisma.notification.create({
+        data: {
+          userId: po.vendor.userId,
+          type: 'PURCHASE_ORDER',
+          title: 'Purchase Order Generated',
+          message: `Purchase order ${po.poNumber} has been generated for your quotation.`,
+          relatedId: po.id
+        }
+      });
+    }
 
     return po;
   }

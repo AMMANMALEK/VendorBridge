@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const StateContext = createContext();
 
+<<<<<<< HEAD
 // ─── Hardcoded Users ───────────────────────────────────────────────────────────
 // 4 internal staff + 3 vendor accounts (one per existing company with a login)
 const SEED_USERS = [
@@ -64,9 +65,39 @@ const SEED_USERS = [
     roleLabel: 'Vendor',
     symbol: '🏭',
     company: 'Aura Logistics'
-  }
-];
+=======
+const apiBase = import.meta.env.VITE_API_BASE || 'http://localhost:5000/api/v1';
 
+const defaultVendors = [];
+const defaultRFQs = [];
+const defaultQuotations = [];
+const defaultPOs = [];
+const defaultInvoices = [];
+const defaultApprovals = [];
+const defaultLogs = [];
+
+function buildHeaders(token) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  return headers;
+}
+
+async function apiFetch(path, token, options = {}) {
+  const res = await fetch(`${apiBase}${path}`, {
+    credentials: 'include',
+    headers: buildHeaders(token),
+    ...options,
+    body: options.body ? JSON.stringify(options.body) : undefined
+  });
+  if (!res.ok) {
+    const errorBody = await res.json().catch(() => null);
+    throw new Error(errorBody?.message || res.statusText || 'API request failed');
+>>>>>>> f5f168f131295355d059a023d5db22fba0abdab1
+  }
+  return res.status === 204 ? null : res.json();
+}
+
+<<<<<<< HEAD
 // ─── Default Data ──────────────────────────────────────────────────────────────
 const defaultVendors = [
   { id: "VND-001", name: "Global Tech Solutions",  contact: "vendor@globaltech.com",    category: "IT Hardware",      status: "Active", rating: "4.8", address: "Mumbai, MH",    totalOrders: 0, totalSpent: 0 },
@@ -112,65 +143,195 @@ if (localStorage.getItem('vb_seed_version') !== SEED_VERSION) {
 }
 
 // ─── Provider ──────────────────────────────────────────────────────────────────
+=======
+function formatDate(dateString) {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return String(dateString);
+  return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function normalizeVendor(vendor) {
+  if (!vendor) return null;
+  const normalized = {
+    ...vendor,
+    id: vendor.id,
+    companyName: vendor.companyName || vendor.name || '',
+    name: vendor.companyName || vendor.name || `${vendor.contactPerson || ''}`.trim() || 'Vendor',
+    contact: vendor.email || vendor.contact || vendor.phone || vendor.contactPerson || '',
+    rating: typeof vendor.rating === 'number' ? vendor.rating : Number(vendor.rating) || 0,
+    category: vendor.category || 'General',
+    status: vendor.status ? String(vendor.status).charAt(0).toUpperCase() + String(vendor.status).slice(1) : 'Active'
+  };
+  return normalized;
+}
+
+function normalizeRFQ(rfq) {
+  if (!rfq) return null;
+  const assignedVendors = Array.isArray(rfq.assignedVendors)
+    ? rfq.assignedVendors.map(av => normalizeVendor(av.vendor || av))
+    : [];
+  return {
+    ...rfq,
+    assignedVendors,
+    items: Array.isArray(rfq.items)
+      ? rfq.items.map(item => ({ ...item, name: item.productName || item.name || 'Item' }))
+      : [],
+    createdDate: formatDate(rfq.createdAt),
+    deadline: rfq.deadline ? formatDate(rfq.deadline) : '',
+    quotationCount: rfq._count?.quotations ?? (Array.isArray(rfq.quotations) ? rfq.quotations.length : 0)
+  };
+}
+
+function normalizeQuotation(quotation) {
+  if (!quotation) return null;
+  const vendor = normalizeVendor(quotation.vendor || quotation.vendorId ? quotation.vendor : null);
+  return {
+    ...quotation,
+    vendor,
+    vendorName: quotation.vendor?.companyName || quotation.vendorName || vendor?.companyName || vendor?.name || '',
+    rfqTitle: quotation.rfq?.title || quotation.rfqTitle || '',
+    submittedDate: formatDate(quotation.createdAt),
+    amount: quotation.grandTotal ?? quotation.amount ?? quotation.subtotal ?? 0,
+    grandTotal: quotation.grandTotal ?? quotation.amount ?? quotation.subtotal ?? 0,
+    deliveryDays: quotation.deliveryDays || quotation.deliveryTimeline || '',
+    items: Array.isArray(quotation.items)
+      ? quotation.items.map(item => ({ ...item, name: item.productName || item.name || 'Item' }))
+      : [],
+    status: quotation.status ? String(quotation.status).charAt(0).toUpperCase() + String(quotation.status).slice(1) : 'Draft',
+    requester: quotation.submittedBy?.name || vendor?.companyName || ''
+  };
+}
+
+function normalizeApproval(approval) {
+  if (!approval) return null;
+  const vendor = normalizeVendor(approval.vendor);
+  const quotation = approval.quotation || {};
+  return {
+    ...approval,
+    vendor,
+    vendorName: vendor?.companyName || '',
+    title: approval.rfq?.title || quotation?.rfq?.title || `Quotation ${approval.quotationId || ''}`,
+    requester: quotation?.submittedBy?.name || vendor?.companyName || 'Vendor',
+    amount: quotation?.grandTotal ?? quotation?.subtotal ?? 0,
+    submittedDate: formatDate(approval.createdAt),
+    decisionDate: formatDate(approval.reviewedAt || approval.updatedAt),
+    decidedBy: approval.approvedBy?.name || '',
+    remark: approval.remarks || approval.remark || '',
+    status: approval.status ? String(approval.status).charAt(0).toUpperCase() + String(approval.status).slice(1) : 'Pending',
+    type: approval.type || (quotation ? 'Quotation Approval' : 'Purchase Order'),
+    sourceId: approval.quotationId || approval.rfqId || ''
+  };
+}
+
+function normalizePurchaseOrder(po) {
+  if (!po) return null;
+  const vendor = normalizeVendor(po.vendor);
+  const itemsList = Array.isArray(po.items)
+    ? po.items.map(item => ({ ...item, name: item.productName || item.name || 'Item' }))
+    : [];
+  const itemsDisplay = itemsList.map(item => item.name).filter(Boolean).join(', ');
+  const normalizedStatus = String(po.status || '').toLowerCase();
+  const status = normalizedStatus === 'generated'
+    ? 'Approved'
+    : normalizedStatus === 'completed'
+      ? 'Completed'
+      : normalizedStatus === 'paid'
+        ? 'Paid'
+        : normalizedStatus ? normalizedStatus.charAt(0).toUpperCase() + normalizedStatus.slice(1) : 'Pending';
+  return {
+    ...po,
+    vendor,
+    vendorName: vendor?.companyName || '',
+    amount: po.grandTotal ?? po.amount ?? po.subtotal ?? 0,
+    items: itemsDisplay,
+    itemsList,
+    date: formatDate(po.createdAt),
+    status,
+    poId: po.id,
+    poNumber: po.poNumber || `PO-${String(po.id || '').slice(0, 6).toUpperCase()}`,
+    rfqTitle: po.rfq?.title || ''
+  };
+}
+
+function normalizeInvoice(invoice) {
+  if (!invoice) return null;
+  const vendor = normalizeVendor(invoice.vendor);
+  const itemsList = Array.isArray(invoice.items)
+    ? invoice.items.map(item => ({ ...item, name: item.productName || item.name || 'Item' }))
+    : [];
+  const rawStatus = String(invoice.status || '').toLowerCase();
+  const dueDate = invoice.dueDate ? new Date(invoice.dueDate) : null;
+  const status = rawStatus === 'paid'
+    ? 'Paid'
+    : rawStatus === 'sent'
+      ? 'Sent'
+      : dueDate && dueDate < new Date()
+        ? 'Overdue'
+        : 'Pending';
+  return {
+    ...invoice,
+    vendor,
+    vendorName: vendor?.companyName || '',
+    amount: invoice.grandTotal ?? invoice.amount ?? invoice.subtotal ?? 0,
+    date: formatDate(invoice.createdAt),
+    dueDate: invoice.dueDate ? formatDate(invoice.dueDate) : '',
+    status,
+    poId: invoice.purchaseOrderId || invoice.poId,
+    items: itemsList,
+    itemsList
+  };
+}
+
+function normalizeResponse(data, normalizer) {
+  return Array.isArray(data) ? data.map(normalizer).filter(Boolean) : [];
+}
+
+>>>>>>> f5f168f131295355d059a023d5db22fba0abdab1
 export const StateProvider = ({ children }) => {
-  // Registered accounts (seed + any vendor self-registrations)
-  const [registeredUsers, setRegisteredUsers] = useState(() => {
-    const data = localStorage.getItem('vb_registered_users');
-    return data ? JSON.parse(data) : SEED_USERS;
-  });
-
   const [user, setUser] = useState(() => {
-    const data = localStorage.getItem('vb_user');
-    return data ? JSON.parse(data) : null;
+    try {
+      const stored = localStorage.getItem('vb_user') || sessionStorage.getItem('vb_user');
+      return stored ? JSON.parse(stored) : null;
+    } catch { return null; }
   });
+  const [token, setToken] = useState(() => localStorage.getItem('vb_token') || sessionStorage.getItem('vb_token'));
+  const [persistAuth, setPersistAuth] = useState(() => Boolean(localStorage.getItem('vb_token')));
+  const [users, setUsers] = useState([]);
+  const [vendors, setVendors] = useState(defaultVendors);
+  const [rfqs, setRfqs] = useState(defaultRFQs);
+  const [quotations, setQuotations] = useState(defaultQuotations);
+  const [pos, setPos] = useState(defaultPOs);
+  const [invoices, setInvoices] = useState(defaultInvoices);
+  const [approvals, setApprovals] = useState(defaultApprovals);
+  const [logs, setLogs] = useState(defaultLogs);
+  // isLoading prevents route guards from firing before auth state is settled
+  const [isLoading, setIsLoading] = useState(true);
+  const [dismissedNotifIds, setDismissedNotifIds] = useState([]);
 
-  const [vendors, setVendors] = useState(() => {
-    const data = localStorage.getItem('vb_vendors');
-    return data ? JSON.parse(data) : defaultVendors;
-  });
+  useEffect(() => {
+    try {
+      localStorage.setItem('vb_user', user ? JSON.stringify(user) : '');
+    } catch { /* ignore */ }
+  }, [user]);
 
-  const [rfqs, setRfqs] = useState(() => {
-    const data = localStorage.getItem('vb_rfqs');
-    return data ? JSON.parse(data) : defaultRFQs;
-  });
+  useEffect(() => {
+    const storage = persistAuth ? localStorage : sessionStorage;
+    if (token) {
+      storage.setItem('vb_token', token);
+      storage.setItem('vb_user', JSON.stringify(user || {}));
+      if (!persistAuth) {
+        localStorage.removeItem('vb_token');
+        localStorage.removeItem('vb_user');
+      }
+    } else {
+      localStorage.removeItem('vb_token');
+      localStorage.removeItem('vb_user');
+      sessionStorage.removeItem('vb_token');
+      sessionStorage.removeItem('vb_user');
+    }
+  }, [token, user, persistAuth]);
 
-  const [quotations, setQuotations] = useState(() => {
-    const data = localStorage.getItem('vb_quotations');
-    return data ? JSON.parse(data) : defaultQuotations;
-  });
-
-  const [pos, setPos] = useState(() => {
-    const data = localStorage.getItem('vb_pos');
-    return data ? JSON.parse(data) : defaultPOs;
-  });
-
-  const [invoices, setInvoices] = useState(() => {
-    const data = localStorage.getItem('vb_invoices');
-    return data ? JSON.parse(data) : defaultInvoices;
-  });
-
-  const [approvals, setApprovals] = useState(() => {
-    const data = localStorage.getItem('vb_approvals');
-    return data ? JSON.parse(data) : defaultApprovals;
-  });
-
-  const [logs, setLogs] = useState(() => {
-    const data = localStorage.getItem('vb_logs');
-    return data ? JSON.parse(data) : defaultLogs;
-  });
-
-  // Persist everything
-  useEffect(() => { localStorage.setItem('vb_registered_users', JSON.stringify(registeredUsers)); }, [registeredUsers]);
-  useEffect(() => { localStorage.setItem('vb_user', user ? JSON.stringify(user) : ''); }, [user]);
-  useEffect(() => { localStorage.setItem('vb_vendors', JSON.stringify(vendors)); }, [vendors]);
-  useEffect(() => { localStorage.setItem('vb_rfqs', JSON.stringify(rfqs)); }, [rfqs]);
-  useEffect(() => { localStorage.setItem('vb_quotations', JSON.stringify(quotations)); }, [quotations]);
-  useEffect(() => { localStorage.setItem('vb_pos', JSON.stringify(pos)); }, [pos]);
-  useEffect(() => { localStorage.setItem('vb_invoices', JSON.stringify(invoices)); }, [invoices]);
-  useEffect(() => { localStorage.setItem('vb_approvals', JSON.stringify(approvals)); }, [approvals]);
-  useEffect(() => { localStorage.setItem('vb_logs', JSON.stringify(logs)); }, [logs]);
-
-  // ─── Helpers ────────────────────────────────────────────────────────────────
   const addLog = (action, category = 'System', actorName) => {
     const newLog = {
       id: `LOG-${Date.now()}`,
@@ -182,237 +343,123 @@ export const StateProvider = ({ children }) => {
     setLogs(prev => [newLog, ...prev]);
   };
 
-  // ─── Auth ────────────────────────────────────────────────────────────────────
-  const login = (email, password) => {
-    const found = registeredUsers.find(
-      u => u.email.toLowerCase() === email.toLowerCase() && u.password === password
-    );
-    if (!found) return null;
+  const refreshData = async (authToken) => {
+    if (!authToken) return;
+    try {
+      const [usersData, vendorsData, rfqsData, quotationsData, approvalsData, posData, invoicesData] = await Promise.all([
+        apiFetch('/users', authToken).catch(() => []),
+        apiFetch('/vendors', authToken).catch(() => []),
+        apiFetch('/rfqs', authToken).catch(() => []),
+        apiFetch('/quotations', authToken).catch(() => []),
+        apiFetch('/approvals', authToken).catch(() => []),
+        apiFetch('/purchase-orders', authToken).catch(() => []),
+        apiFetch('/invoices', authToken).catch(() => [])
+      ]);
 
-    const loggedUser = {
-      id: found.id,
-      name: found.name,
-      email: found.email,
-      role: found.role,
-      roleLabel: found.roleLabel,
-      symbol: found.symbol,
-      company: found.company
-    };
-    setUser(loggedUser);
-    addLog(`User logged in: ${loggedUser.name}`, 'Authentication', loggedUser.name);
-    return loggedUser;
+      setUsers(Array.isArray(usersData) ? usersData : []);
+      setVendors(normalizeResponse(vendorsData, normalizeVendor));
+      setRfqs(normalizeResponse(rfqsData, normalizeRFQ));
+      setQuotations(normalizeResponse(quotationsData, normalizeQuotation));
+      setApprovals(normalizeResponse(approvalsData, normalizeApproval));
+      setPos(normalizeResponse(posData, normalizePurchaseOrder));
+      setInvoices(normalizeResponse(invoicesData, normalizeInvoice));
+    } catch (error) {
+      console.error('Failed to refresh data:', error);
+    }
+  };
+
+  // On mount: if we already have a token+user from storage, just mark ready.
+  // refreshData is called lazily; don't block route rendering.
+  useEffect(() => {
+    if (token && user) {
+      // Data is stale; kick off a background refresh but don't block navigation
+      refreshData(token).finally(() => setIsLoading(false));
+    } else {
+      setIsLoading(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // run once on mount only
+
+  const login = async (email, password, remember = false) => {
+    const response = await apiFetch('/auth/login', null, { method: 'POST', body: { email, password } });
+    setPersistAuth(Boolean(remember));
+    setToken(response.token);
+    setUser(response.user);
+    // Refresh data in background after login — don't block navigation
+    refreshData(response.token);
+    return response.user;
   };
 
   const logout = () => {
     addLog(`User logged out: ${user ? user.name : 'Unknown'}`, 'Authentication');
     setUser(null);
+    setToken(null);
+    setPersistAuth(false);
+    localStorage.removeItem('vb_user');
+    localStorage.removeItem('vb_token');
+    sessionStorage.removeItem('vb_user');
+    sessionStorage.removeItem('vb_token');
   };
 
-  // Vendor self-registration — always creates a new account (multiple allowed)
-  const registerVendor = (formData) => {
-    const newUser = {
-      id: `USR-${Date.now()}`,
-      name: formData.companyName || formData.fullName,
+  const registerVendor = async (formData) => {
+    const body = {
+      name: formData.fullName || formData.companyName,
       email: formData.email,
-      password: formData.password || 'Vendor@123',
+      password: formData.password,
       role: 'vendor',
-      roleLabel: 'Vendor',
-      symbol: '🏭',
-      company: formData.companyName || formData.fullName
+      company: formData.companyName || formData.fullName,
+      phone: formData.phone,
+      category: formData.category,
+      country: formData.country,
+      additionalInfo: formData.additionalInfo
     };
-    setRegisteredUsers(prev => [...prev, newUser]);
-
-    // Also add to vendor list as Pending
-    const vendorEntry = {
-      id: `VND-${String(vendors.length + 1).padStart(3, '0')}`,
-      name: formData.companyName || formData.fullName,
-      contact: formData.email,
-      category: formData.category || 'General',
-      status: 'Pending',
-      rating: '0.0',
-      address: formData.country || ''
-    };
-    setVendors(prev => [...prev, vendorEntry]);
-    addLog(`New vendor registered: ${newUser.name}`, 'Authentication', newUser.name);
-    return newUser;
+    const response = await apiFetch('/auth/register', null, { method: 'POST', body });
+    if (response.user.status === 'Active') {
+      setToken(response.token);
+      setUser(response.user);
+      await refreshData(response.token);
+    }
+    addLog(`Vendor registration submitted for: ${response.user.name}`, 'Authentication', response.user.name);
+    return response;
   };
 
-  // Legacy registerCompany (kept for compatibility)
   const registerCompany = (formData) => registerVendor(formData);
 
-  // ─── Data Mutations ──────────────────────────────────────────────────────────
-  const addVendor = (vendor) => {
-    const newVendor = { ...vendor, id: `VND-${String(vendors.length + 1).padStart(3, '0')}`, status: 'Active', rating: '5.0' };
-    setVendors(prev => [...prev, newVendor]);
-    addLog(`Onboarded new vendor: ${newVendor.name}`, 'Vendor');
-    return newVendor;
-  };
-
-  const updateVendorStatus = (vendorId, newStatus) => {
-    setVendors(prev => prev.map(v => v.id === vendorId ? { ...v, status: newStatus } : v));
-    const vendor = vendors.find(v => v.id === vendorId);
-    if (vendor) addLog(`Vendor ${vendor.name} status changed to ${newStatus}`, 'Vendor');
-  };
-
-  const addRFQ = (rfq) => {
-    const newRFQ = {
-      ...rfq,
-      id: `RFQ-2026-${String(rfqs.length + 1).padStart(3, '0')}`,
-      createdDate: new Date().toISOString().split('T')[0],
-      status: rfq.isDraft ? 'Draft' : 'Open'
-    };
-    setRfqs(prev => [...prev, newRFQ]);
-    if (!rfq.isDraft) addLog(`Published RFQ: ${newRFQ.title} — sent to ${(rfq.assignedVendors || []).length} vendor(s)`, 'RFQ');
-    else addLog(`Saved RFQ as draft: ${newRFQ.title}`, 'RFQ');
-    return newRFQ;
-  };
-
-  const generateInvoice = (poId) => {
-    const po = pos.find(p => p.id === poId);
-    if (!po) return null;
-    // Check not already invoiced
-    const existing = invoices.find(i => i.poId === poId);
-    if (existing) return existing;
-    const invId = `INV-2026-${String(invoices.length + 1).padStart(3, '0')}`;
-    const gstRate = 0.18;
-    const subtotal = po.amount;
-    const gstAmount = Math.round(subtotal * gstRate);
-    const newInvoice = {
-      id: invId, poId: po.id, vendorName: po.vendorName,
-      amount: po.amount, subtotal, gstAmount,
-      grandTotal: subtotal + gstAmount,
-      status: 'Unpaid',
-      date: new Date().toISOString().split('T')[0]
-    };
-    setInvoices(prev => [...prev, newInvoice]);
-    addLog(`Generated Invoice ${invId} for PO ${poId} — ${po.vendorName}`, 'Invoice');
-    return newInvoice;
-  };
-
-  const addQuotation = (quote) => {
-    const isDraft = quote.isDraft || false;
-    // Check if a draft already exists for this RFQ+vendor — update it
-    const existingDraftIdx = quotations.findIndex(
-      q => q.rfqId === quote.rfqId && q.vendorName === quote.vendorName && q.status === 'Draft'
-    );
-    if (existingDraftIdx !== -1) {
-      const updatedId = quotations[existingDraftIdx].id;
-      const updatedQuote = { ...quotations[existingDraftIdx], ...quote, id: updatedId, status: isDraft ? 'Draft' : 'Pending', submittedDate: new Date().toISOString().split('T')[0] };
-      setQuotations(prev => prev.map(q => q.id === updatedId ? updatedQuote : q));
-      if (!isDraft) {
-        addLog(`Submitted quotation for RFQ: ${quote.rfqTitle} by ${quote.vendorName}`, 'Quotation');
-        const newApproval = {
-          id: `APP-${Date.now()}`,
-          type: 'Quotation Approval',
-          sourceId: updatedId,
-          title: `${quote.vendorName} - ${quote.rfqTitle} Quote`,
-          requester: user ? user.name : 'System',
-          amount: quote.amount,
-          status: 'Pending',
-          date: new Date().toISOString().split('T')[0]
-        };
-        setApprovals(prev => [newApproval, ...prev]);
-      } else {
-        addLog(`Saved draft quotation for RFQ: ${quote.rfqTitle}`, 'Quotation');
+  const addVendor = async (vendor) => {
+    const newVendor = await apiFetch('/vendors', token, {
+      method: 'POST',
+      body: {
+        companyName: vendor.name,
+        contactPerson: vendor.contact,
+        email: vendor.contact,
+        category: vendor.category,
+        address: vendor.address,
+        phone: vendor.phone || vendor.contact
       }
-      return updatedQuote;
-    }
-
-    const newQuote = {
-      ...quote,
-      id: `QTN-${900 + quotations.length + 1}`,
-      submittedDate: new Date().toISOString().split('T')[0],
-      status: isDraft ? 'Draft' : 'Pending'
-    };
-    setQuotations(prev => [...prev, newQuote]);
-
-    if (!isDraft) {
-      addLog(`Submitted quotation for RFQ: ${quote.rfqTitle} by ${quote.vendorName}`, 'Quotation');
-      const newApproval = {
-        id: `APP-${String(approvals.length + 1).padStart(3, '0')}`,
-        type: 'Quotation Approval',
-        sourceId: newQuote.id,
-        title: `${newQuote.vendorName} - ${newQuote.rfqTitle} Quote`,
-        requester: user ? user.name : 'System',
-        amount: newQuote.amount,
-        status: 'Pending',
-        date: new Date().toISOString().split('T')[0]
-      };
-      setApprovals(prev => [newApproval, ...prev]);
-    } else {
-      addLog(`Saved draft quotation for RFQ: ${quote.rfqTitle}`, 'Quotation');
-    }
-    return newQuote;
+    });
+    const normalized = normalizeVendor(newVendor);
+    setVendors(prev => [normalized, ...prev]);
+    addLog(`Onboarded new vendor: ${normalized.companyName}`, 'Vendor');
+    return normalized;
   };
 
-  const approveQuotation = (quoteId) => {
-    setQuotations(prev => prev.map(q => q.id === quoteId ? { ...q, status: 'Approved' } : q));
-    const quote = quotations.find(q => q.id === quoteId);
-    if (!quote) return;
-
-    addLog(`Approved quotation ${quoteId} from ${quote.vendorName}`, 'Quotation');
-
-    const poId = `PO-2026-${String(pos.length + 1).padStart(3, '0')}`;
-    const newPO = {
-      id: poId,
-      vendorName: quote.vendorName,
-      amount: quote.amount,
-      status: 'Pending Approval',
-      date: new Date().toISOString().split('T')[0],
-      items: `${quote.rfqTitle} - Agreed deliverables`
-    };
-    setPos(prev => [...prev, newPO]);
-    addLog(`Generated Purchase Order: ${poId}`, 'Purchase Order');
-
-    setApprovals(prev => prev.map(a => a.sourceId === quoteId ? { ...a, status: 'Approved' } : a));
-
-    const newPOApproval = {
-      id: `APP-${String(approvals.length + 2).padStart(3, '0')}`,
-      type: 'Purchase Order',
-      sourceId: poId,
-      title: `${quote.vendorName} PO Approval`,
-      requester: user ? user.name : 'System',
-      amount: quote.amount,
-      status: 'Pending',
-      date: new Date().toISOString().split('T')[0]
-    };
-    setApprovals(prev => [newPOApproval, ...prev]);
+  const updateVendorStatus = async (vendorId, newStatus) => {
+    const updated = await apiFetch(`/vendors/${vendorId}`, token, { method: 'PUT', body: { status: newStatus } });
+    const normalized = normalizeVendor(updated);
+    setVendors(prev => prev.map(v => (v.id === vendorId ? normalized : v)));
+    addLog(`Vendor ${normalized.companyName || normalized.name} status changed to ${newStatus}`, 'Vendor');
+    return normalized;
   };
 
-  const approveApproval = (approvalId, remark = '') => {
-    let targetApproval;
-    setApprovals(prev => prev.map(a => {
-      if (a.id === approvalId) {
-        targetApproval = a;
-        return { ...a, status: 'Approved', remark, decidedBy: user?.name, decidedAt: new Date().toISOString() };
-      }
-      return a;
-    }));
-    if (!targetApproval) return;
-    addLog(`Approved ${targetApproval.type}: ${targetApproval.title}${remark ? ` — "${remark}"` : ''}`, 'Approvals');
-    if (targetApproval.type === 'Quotation Approval') {
-      approveQuotation(targetApproval.sourceId);
-    } else if (targetApproval.type === 'Purchase Order') {
-      const poId = targetApproval.sourceId;
-      setPos(prev => prev.map(p => p.id === poId ? { ...p, status: 'Approved' } : p));
-      const po = pos.find(p => p.id === poId);
-      if (po) {
-        const invId = `INV-2026-${String(invoices.length + 1).padStart(3, '0')}`;
-        const subtotal = po.amount;
-        const gstAmount = Math.round(subtotal * 0.18);
-        const newInvoice = {
-          id: invId, poId: po.id, vendorName: po.vendorName,
-          amount: po.amount, subtotal, gstAmount,
-          grandTotal: subtotal + gstAmount,
-          status: 'Unpaid',
-          date: new Date().toISOString().split('T')[0]
-        };
-        setInvoices(prev => [...prev, newInvoice]);
-        addLog(`Auto-generated Invoice ${invId} after PO approval`, 'Invoice');
-      }
-    }
+  const addRFQ = async (rfq) => {
+    const newRFQ = await apiFetch('/rfqs', token, { method: 'POST', body: rfq });
+    const normalized = normalizeRFQ(newRFQ);
+    setRfqs(prev => [normalized, ...prev]);
+    addLog(`Published RFQ: ${normalized.title}`, 'RFQ');
+    return normalized;
   };
 
+<<<<<<< HEAD
   const rejectApproval = (approvalId, remark = '') => {
     // Capture current snapshot for lookups (state updates are async)
     let targetApproval;
@@ -491,36 +538,79 @@ export const StateProvider = ({ children }) => {
     setInvoices(prev => prev.map(i => i.id === invoiceId ? { ...i, status: 'Paid' } : i));
     const inv = invoices.find(i => i.id === invoiceId);
     if (inv) addLog(`Paid Invoice ${invoiceId} of amount ₹${inv.amount}`, 'Invoice');
+=======
+  const generateInvoice = async (poId) => {
+    const newInvoice = await apiFetch(`/invoices/generate/${poId}`, token, { method: 'POST' });
+    const normalized = normalizeInvoice(newInvoice);
+    setInvoices(prev => [normalized, ...prev]);
+    addLog(`Generated Invoice ${normalized.invoiceNumber} for PO ${poId}`, 'Invoice');
+    return normalized;
   };
 
-  // ─── User Management (Admin only) ───────────────────────────────────────────
-  const updateUserRole = (userId, newRole, newRoleLabel, newSymbol) => {
-    setRegisteredUsers(prev => prev.map(u =>
-      u.id === userId ? { ...u, role: newRole, roleLabel: newRoleLabel, symbol: newSymbol } : u
-    ));
-    const target = registeredUsers.find(u => u.id === userId);
-    if (target) addLog(`Admin changed role of ${target.name} to ${newRoleLabel}`, 'System');
+  const addQuotation = async (quote) => {
+    const newQuote = await apiFetch('/quotations', token, { method: 'POST', body: quote });
+    const normalized = normalizeQuotation(newQuote);
+    setQuotations(prev => [normalized, ...prev]);
+    addLog(`Submitted quotation for RFQ: ${normalized.rfqId}`, 'Quotation');
+    return normalized;
+>>>>>>> f5f168f131295355d059a023d5db22fba0abdab1
   };
 
-  const deactivateUser = (userId) => {
-    setRegisteredUsers(prev => prev.map(u =>
-      u.id === userId ? { ...u, status: u.status === 'Inactive' ? 'Active' : 'Inactive' } : u
-    ));
-    const target = registeredUsers.find(u => u.id === userId);
-    if (target) {
-      const newStatus = target.status === 'Inactive' ? 'Active' : 'Inactive';
-      addLog(`Admin ${newStatus === 'Inactive' ? 'deactivated' : 'reactivated'} user ${target.name}`, 'System');
-    }
+  const approveQuotation = async (approvalId) => {
+    const updated = await apiFetch(`/approvals/${approvalId}/approve`, token, { method: 'POST' });
+    await refreshData(token);
+    addLog(`Approved quotation approval ${approvalId}`, 'Approvals');
+    return updated;
   };
 
-  const resetUserPassword = (userId, newPassword) => {
-    setRegisteredUsers(prev => prev.map(u =>
-      u.id === userId ? { ...u, password: newPassword } : u
-    ));
-    const target = registeredUsers.find(u => u.id === userId);
+  const approveApproval = async (approvalId, remark = '') => {
+    const updated = await apiFetch(`/approvals/${approvalId}/approve`, token, { method: 'POST', body: { remarks: remark } });
+    await refreshData(token);
+    addLog(`Approved approval ${approvalId}`, 'Approvals');
+    return updated;
+  };
+
+  const rejectApproval = async (approvalId, remark = '') => {
+    const updated = await apiFetch(`/approvals/${approvalId}/reject`, token, { method: 'POST', body: { remarks: remark } });
+    await refreshData(token);
+    addLog(`Rejected approval ${approvalId}`, 'Approvals');
+    return updated;
+  };
+
+  const payInvoice = async (invoiceId) => {
+    const paidInvoice = await apiFetch(`/invoices/${invoiceId}/pay`, token, { method: 'POST' });
+    const normalized = normalizeInvoice(paidInvoice);
+    setInvoices(prev => prev.map(i => (i.id === invoiceId ? normalized : i)));
+    addLog(`Paid Invoice ${invoiceId}`, 'Invoice');
+    return normalized;
+  };
+
+  const updateUserRole = async (userId, newRole, newRoleLabel, newSymbol) => {
+    const updated = await apiFetch(`/users/${userId}`, token, { method: 'PUT', body: { role: newRole } });
+    setUsers(prev => prev.map(u => (u.id === userId ? updated : u)));
+    addLog(`Admin changed role of ${updated.name} to ${newRoleLabel}`, 'System');
+    return updated;
+  };
+
+  const deactivateUser = async (userId) => {
+    const existing = users.find(u => u.id === userId);
+    if (!existing) return null;
+    const newStatus = existing.status === 'Inactive' ? 'Active' : 'Inactive';
+    const updated = await apiFetch(`/users/${userId}`, token, { method: 'PUT', body: { status: newStatus } });
+    setUsers(prev => prev.map(u => (u.id === userId ? updated : u)));
+    addLog(`Admin ${newStatus === 'Inactive' ? 'deactivated' : 'reactivated'} user ${updated.name}`, 'System');
+    return updated;
+  };
+
+  const resetUserPassword = async (userId, newPassword) => {
+    const updated = await apiFetch(`/users/${userId}`, token, { method: 'PUT', body: { password: newPassword } });
+    setUsers(prev => prev.map(u => (u.id === userId ? { ...u, password: newPassword } : u)));
+    const target = users.find(u => u.id === userId);
     if (target) addLog(`Admin reset password for ${target.name}`, 'System');
+    return updated;
   };
 
+<<<<<<< HEAD
   // Derived: RFQs that need officer re-action after a rejection
   const rejectedRFQs = rfqs.filter(r => r.rejectionNotice);
 
@@ -532,6 +622,112 @@ export const StateProvider = ({ children }) => {
       addVendor, updateVendorStatus, addRFQ, generateInvoice, addQuotation,
       approveQuotation, approveApproval, rejectApproval, clearRejectionNotice, payInvoice,
       updateUserRole, deactivateUser, resetUserPassword
+=======
+  const dismissReturnNotif = (notifId) => {
+    setDismissedNotifIds(prev => [...prev, notifId]);
+  };
+
+  const resubmitForApproval = async (quoteId) => {
+    const updated = await apiFetch(`/quotations/${quoteId}`, token, {
+      method: 'PUT',
+      body: { status: 'Pending' }
+    });
+    // Dismiss any active "Returned" notification for this quote
+    setDismissedNotifIds(prev => [...prev, `RET-${quoteId}`]);
+    await refreshData(token);
+    addLog(`Officer resubmitted quotation ${quoteId} for manager approval`, 'Approvals');
+    return updated;
+  };
+
+  // Derive virtual "Returned to Officer" notifications from rejected approvals
+  const computedApprovals = React.useMemo(() => {
+    const list = [...approvals];
+    
+    // For every quotation approval that is rejected, inject a virtual "Returned to Officer" notification
+    approvals.forEach(a => {
+      if (a.status === 'Rejected' && a.type === 'Quotation Approval') {
+        const retId = `RET-${a.id}`;
+        // Only inject if not dismissed
+        if (!dismissedNotifIds.includes(retId)) {
+          list.push({
+            id: retId,
+            type: 'Returned to Officer',
+            sourceId: a.sourceId,
+            rfqId: a.rfqId || (quotations.find(q => q.id === a.sourceId)?.rfqId || ''),
+            rfqTitle: a.rfq?.title || (quotations.find(q => q.id === a.sourceId)?.rfqTitle || ''),
+            title: `${a.title || 'Quotation'} — Returned`,
+            requester: a.requester,
+            amount: a.amount,
+            status: 'Action Required',
+            rejectionRemark: a.remark || '',
+            rejectedBy: a.decidedBy || '',
+            date: a.decisionDate || new Date().toISOString().split('T')[0],
+          });
+        }
+      }
+    });
+
+    // Also scan for any quotations with status === 'Rejected' which might not have an explicit Approval record
+    quotations.forEach(q => {
+      if (q.status === 'Rejected') {
+        const retId = `RET-${q.id}`;
+        const alreadyExists = list.some(item => item.id === retId || item.sourceId === q.id && item.status === 'Action Required');
+        if (!alreadyExists && !dismissedNotifIds.includes(retId)) {
+          list.push({
+            id: retId,
+            type: 'Returned to Officer',
+            sourceId: q.id,
+            rfqId: q.rfqId,
+            rfqTitle: q.rfqTitle,
+            title: `${q.vendorName || 'Vendor'} - ${q.rfqTitle || 'RFQ'} Quote — Returned`,
+            requester: q.requester || q.vendorName || 'Vendor',
+            amount: q.amount,
+            status: 'Action Required',
+            rejectionRemark: q.rejectionRemark || 'Rejected',
+            rejectedBy: q.rejectedBy || 'Manager',
+            date: q.rejectedAt || q.submittedDate || new Date().toISOString().split('T')[0],
+          });
+        }
+      }
+    });
+
+    // Filter out any dismissed approvals
+    return list.filter(a => !dismissedNotifIds.includes(a.id));
+  }, [approvals, quotations, dismissedNotifIds]);
+
+  return (
+    <StateContext.Provider value={{
+      user,
+      users,
+      registeredUsers: users,
+      vendors,
+      rfqs,
+      quotations,
+      pos,
+      invoices,
+      approvals: computedApprovals,
+      logs,
+      isLoading,
+      refreshData,
+      login,
+      logout,
+      registerVendor,
+      registerCompany,
+      addVendor,
+      updateVendorStatus,
+      addRFQ,
+      generateInvoice,
+      addQuotation,
+      approveQuotation,
+      approveApproval,
+      rejectApproval,
+      payInvoice,
+      dismissReturnNotif,
+      resubmitForApproval,
+      updateUserRole,
+      deactivateUser,
+      resetUserPassword
+>>>>>>> f5f168f131295355d059a023d5db22fba0abdab1
     }}>
       {children}
     </StateContext.Provider>

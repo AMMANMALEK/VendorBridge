@@ -22,6 +22,15 @@ export const updateQuotation = async (req: AuthRequest, res: Response, next: Nex
   }
 };
 
+export const getAllQuotations = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const quotations = await quotationsService.findAll(req.query as any);
+    res.json(quotations);
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getQuotationsByRFQ = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const quotations = await quotationsService.findByRFQ(req.params.id as string);

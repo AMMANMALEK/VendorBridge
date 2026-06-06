@@ -11,22 +11,45 @@ export class AuthService {
     role?: string;
     company?: string;
     phone?: string;
+    category?: string;
+    country?: string;
+    additionalInfo?: string;
   }) {
     const existing = await prisma.user.findUnique({ where: { email: data.email } });
     if (existing) throw { statusCode: 400, message: 'Email already registered' };
+    const salt = await bcrypt.genSalt(12);
+    const hashedPassword = await bcrypt.hash(data.password, salt);
+    const isVendor = (data.role || 'officer') === 'vendor';
     const user = await prisma.user.create({
       data: {
         name: data.name,
         email: data.email,
-        password: data.password,
-        role: data.role || 'procurement_officer',
+        password: hashedPassword,
+        role: data.role || 'officer',
         company: data.company,
-        phone: data.phone
+        phone: data.phone,
+        isActive: isVendor ? false : true
       },
-      select: { id: true, name: true, email: true, role: true }
+      select: { id: true, name: true, email: true, role: true, company: true, phone: true, isActive: true }
     });
+
+    if (isVendor) {
+      await prisma.vendor.create({
+        data: {
+          companyName: data.company || data.name,
+          contactPerson: data.name,
+          email: data.email,
+          phone: data.phone || '',
+          category: data.category || 'other',
+          address: data.country || '',
+          userId: user.id,
+          status: 'pending'
+        }
+      });
+    }
+
     const token = generateToken(user.id);
-    return { token, user };
+    return { token, user: { ...user, status: user.isActive ? 'Active' : 'Pending' } };
   }
 
   async login(email: string, password: string) {
@@ -38,7 +61,15 @@ export class AuthService {
     const token = generateToken(user.id);
     return {
       token,
-      user: { id: user.id, name: user.name, email: user.email, role: user.role }
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        company: user.company,
+        phone: user.phone,
+        status: user.isActive ? 'Active' : 'Inactive'
+      }
     };
   }
 
@@ -85,6 +116,9 @@ export class AuthService {
       select: { id: true, name: true, email: true, role: true, company: true, phone: true, isActive: true, createdAt: true }
     });
     if (!user) throw { statusCode: 404, message: 'User not found' };
-    return user;
+    return {
+      ...user,
+      status: user.isActive ? 'Active' : 'Inactive'
+    };
   }
 }

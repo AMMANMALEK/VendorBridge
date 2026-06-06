@@ -20,6 +20,16 @@ interface SendEmailParams {
 }
 
 export const sendEmail = async ({ to, subject, text, html, attachments }: SendEmailParams) => {
+  if (!config.email.user || !config.email.pass) {
+    console.log(`[Email Service - Mock Mode] Email would be sent to: ${to}`);
+    console.log(`Subject: ${subject}`);
+    if (text) console.log(`Text Body: ${text}`);
+    if (html) console.log(`HTML Body: ${html}`);
+    if (attachments && attachments.length > 0) {
+      console.log(`Attachments: ${attachments.map(a => a.filename).join(', ')}`);
+    }
+    return { messageId: 'mock-message-id-12345' };
+  }
   try {
     const info = await transporter.sendMail({
       from: config.email.user,

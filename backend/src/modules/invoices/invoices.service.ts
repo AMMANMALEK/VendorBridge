@@ -24,7 +24,7 @@ export class InvoicesService {
         generatedById: userId,
         dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         items: {
-          create: po.items.map(item => ({
+          create: po.items.map((item: any) => ({
             productName: item.productName,
             quantity: item.quantity,
             unitPrice: item.unitPrice,
@@ -44,6 +44,17 @@ export class InvoicesService {
         userId, relatedId: invoice.id
       }
     });
+    if (invoice.vendor?.userId) {
+      await prisma.notification.create({
+        data: {
+          userId: invoice.vendor.userId,
+          type: 'INVOICE',
+          title: 'Invoice Generated',
+          message: `Invoice ${invoice.invoiceNumber} was generated for PO ${po.poNumber}.`,
+          relatedId: invoice.id
+        }
+      });
+    }
 
     return invoice;
   }
@@ -55,6 +66,60 @@ export class InvoicesService {
     });
     if (!invoice) throw { statusCode: 404, message: 'Invoice not found' };
     return invoice;
+  }
+
+  async findAll(query: { status?: string; vendorId?: string }) {
+    const where: any = {};
+    if (query.status) where.status = query.status;
+    if (query.vendorId) where.vendorId = query.vendorId;
+    return prisma.invoice.findMany({
+      where,
+      include: { vendor: true, purchaseOrder: true, items: true, generatedBy: { select: { id: true, name: true, email: true } } },
+      orderBy: { createdAt: 'desc' }
+    });
+  }
+
+  async pay(id: string, userId: string) {
+    const invoice = await prisma.invoice.findUnique({
+      where: { id },
+      include: { purchaseOrder: true }
+    });
+    if (!invoice) throw { statusCode: 404, message: 'Invoice not found' };
+
+    const paidInvoice = await prisma.invoice.update({
+      where: { id },
+      data: { status: 'paid', paidAt: new Date() }
+    });
+
+    await prisma.purchaseOrder.update({
+      where: { id: invoice.purchaseOrderId },
+      data: { status: 'paid' }
+    });
+
+    await prisma.activity.create({
+      data: {
+        type: 'INVOICE', action: 'PAID',
+        description: `Invoice ${invoice.invoiceNumber} marked as paid`,
+        userId, relatedId: invoice.id
+      }
+    });
+
+    if (invoice.purchaseOrder.vendorId) {
+      const vendor = await prisma.vendor.findUnique({ where: { id: invoice.vendorId } });
+      if (vendor?.userId) {
+        await prisma.notification.create({
+          data: {
+            userId: vendor.userId,
+            type: 'INVOICE',
+            title: 'Invoice Paid',
+            message: `Invoice ${invoice.invoiceNumber} has been paid.`,
+            relatedId: invoice.id
+          }
+        });
+      }
+    }
+
+    return paidInvoice;
   }
 
   async getPDF(id: string) {
@@ -85,6 +150,17 @@ export class InvoicesService {
         userId, relatedId: invoice.id
       }
     });
+    if (invoice.vendor?.userId) {
+      await prisma.notification.create({
+        data: {
+          userId: invoice.vendor.userId,
+          type: 'INVOICE',
+          title: 'Invoice Sent',
+          message: `Invoice ${invoice.invoiceNumber} has been emailed to ${invoice.vendor.email}.`,
+          relatedId: invoice.id
+        }
+      });
+    }
 
     return { message: 'Invoice emailed successfully' };
   }

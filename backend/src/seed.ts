@@ -19,7 +19,7 @@ const seed = async () => {
     const salt = await bcrypt.genSalt(12);
     const password = await bcrypt.hash('password123', salt);
     await prisma.user.create({
-      data: { name: 'Procurement Officer', email: 'officer@vendorbridge.com', password, role: 'procurement_officer' }
+      data: { name: 'Procurement Officer', email: 'officer@vendorbridge.com', password, role: 'officer' }
     });
     console.log('Officer user created: officer@vendorbridge.com / password123');
   }

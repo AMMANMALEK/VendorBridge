@@ -4,7 +4,7 @@ export class DashboardService {
   async getSummary() {
     const [pendingApprovals, activeRfqs, recentPOs, recentInvoices, vendorCount, quotationCount] = await Promise.all([
       prisma.approval.count({ where: { status: 'pending' } }),
-      prisma.rfq.count({ where: { status: { in: ['draft', 'sent'] } } }),
+      prisma.rfq.count({ where: { status: { in: ['Draft', 'Open'] } } }),
       prisma.purchaseOrder.findMany({
         include: { vendor: { select: { companyName: true } } },
         orderBy: { createdAt: 'desc' },

@@ -1,20 +1,29 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppState } from '../context/StateContext';
-import Sidebar from '../components/Sidebar';
-import Header from '../components/Header';
+import Layout from '../components/Layout';
 
 const CATEGORIES = ['IT Hardware', 'Logistics', 'Office Supplies', 'Industrial Parts', 'Construction', 'Services'];
 const UNITS = ['NOS', 'KG', 'Litre', 'Box', 'Set', 'Meter', 'Hour'];
 
 const AdminRFQView = ({ rfqs }) => {
   const statusBadge = (s) => {
-    if (s === 'Open') return <span className="px-sm py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">Open</span>;
-    if (s === 'Draft') return <span className="px-sm py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">Draft</span>;
-    if (s === 'Closed') return <span className="px-sm py-0.5 rounded-full text-xs font-semibold bg-surface-variant text-on-surface-variant">Closed</span>;
-    return <span className="px-sm py-0.5 rounded-full text-xs font-semibold bg-outline-variant text-on-surface-variant">{s}</span>;
+    const MAP = {
+      'Open':   { cls: 'badge badge-active',   icon: 'circle' },
+      'Draft':  { cls: 'badge badge-pending',  icon: 'edit_note' },
+      'Closed': { cls: 'badge badge-draft',    icon: 'check_circle' },
+    };
+    const cfg = MAP[s] || { cls: 'badge badge-draft', icon: 'info' };
+    return (
+      <span className={cfg.cls}>
+        <span className="material-symbols-outlined" style={{ fontSize: 11, fontVariationSettings: "'FILL' 1" }}>{cfg.icon}</span>
+        {s}
+      </span>
+    );
   };
+
   return (
+<<<<<<< HEAD
     <div className="flex min-h-screen bg-[#F7F9FC]">
       <Sidebar />
       <div className="flex-1 ml-[240px] pt-14 min-h-screen flex flex-col">
@@ -54,8 +63,45 @@ const AdminRFQView = ({ rfqs }) => {
             </table>
           </div>
         </main>
+=======
+    <Layout title="All RFQs">
+      <div className="max-w-[1400px] mx-auto space-y-4">
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-purple-50 border border-purple-200 text-purple-800 text-[13px] font-medium">
+          <span className="material-symbols-outlined" style={{ fontSize: 18 }}>visibility</span>
+          Admin view — all RFQs across the organization. Only Procurement Officers can create new RFQs.
+        </div>
+        <div className="card overflow-hidden">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>RFQ ID</th>
+                <th>Title</th>
+                <th>Category</th>
+                <th>Deadline</th>
+                <th>Vendors</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rfqs.length === 0
+                ? <tr><td colSpan="6" className="text-center py-16 text-slate-400">No RFQs yet.</td></tr>
+                : rfqs.map(r => (
+                  <tr key={r.id}>
+                    <td><span className="font-mono text-[12px] font-semibold text-slate-400">{r.id}</span></td>
+                    <td><span className="font-semibold text-slate-800">{r.title}</span></td>
+                    <td><span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-lg text-[12px]">{r.category}</span></td>
+                    <td className="text-slate-500">{r.deadline}</td>
+                    <td className="text-slate-500">{(r.assignedVendors || []).length} assigned</td>
+                    <td>{statusBadge(r.status)}</td>
+                  </tr>
+                ))
+              }
+            </tbody>
+          </table>
+        </div>
+>>>>>>> f5f168f131295355d059a023d5db22fba0abdab1
       </div>
-    </div>
+    </Layout>
   );
 };
 
@@ -106,47 +152,52 @@ const CreateRFQ = () => {
       alert('RFQ saved as draft. Vendors have not been notified.');
       navigate('/dashboard');
     } else {
-      alert(`RFQ published and sent to ${assignedVendors.length} vendor(s)!`);
-      navigate('/quotation-comparison');
+      alert(`RFQ published and sent to ${assignedVendors.length} vendor(s)! Awaiting vendor bids/quotations.`);
+      navigate('/dashboard');
     }
   };
 
   return (
+<<<<<<< HEAD
     <div className="flex min-h-screen bg-[#F7F9FC]">
       <Sidebar />
       <div className="flex-1 ml-[240px] pt-14 min-h-screen flex flex-col">
         <Header title="Create Request for Quotation" />
 
         <main className="p-xl max-w-7xl w-full mx-auto flex-1 animate-fade-in space-y-lg pb-xl">
+=======
+    <Layout title="Create Request for Quotation">
+      <div className="max-w-[1400px] mx-auto space-y-5 pb-10">
+>>>>>>> f5f168f131295355d059a023d5db22fba0abdab1
 
           {/* ── Section 1: RFQ Details ── */}
-          <div className="bg-white rounded-xl border border-outline-variant custom-shadow p-lg space-y-md">
-            <h3 className="font-semibold text-[16px] border-b pb-sm flex items-center gap-sm">
-              <span className="w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center text-[12px] font-bold">1</span>
+          <div className="card p-6 space-y-4">
+            <h3 className="font-bold text-[16px] text-slate-800 border-b border-slate-100 pb-3 flex items-center gap-3">
+              <span className="w-6 h-6 bg-indigo-600 text-white rounded-full flex items-center justify-center text-[12px] font-bold flex-shrink-0">1</span>
               RFQ Details
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-md">
-              <div className="space-y-xs md:col-span-2">
-                <label className="text-on-surface-variant block uppercase text-[11px] font-semibold">RFQ Title *</label>
-                <input className="w-full h-10 px-md bg-white border border-outline-variant rounded-lg text-[14px] focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="md:col-span-2">
+                <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-1.5">RFQ Title *</label>
+                <input className="w-full h-10 px-3 bg-white border border-slate-200 rounded-xl text-[14px] text-slate-800 focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition-all"
                   required type="text" placeholder="e.g. Office Furniture Procurement Q2 2026"
                   value={rfqDetails.title} onChange={set('title')} />
               </div>
-              <div className="space-y-xs">
-                <label className="text-on-surface-variant block uppercase text-[11px] font-semibold">Category *</label>
-                <select className="w-full h-10 px-md bg-white border border-outline-variant rounded-lg text-[14px] focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+              <div>
+                <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-1.5">Category *</label>
+                <select className="w-full h-10 px-3 bg-white border border-slate-200 rounded-xl text-[14px] text-slate-800 focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition-all appearance-none"
                   value={rfqDetails.category} onChange={set('category')}>
                   {CATEGORIES.map(c => <option key={c}>{c}</option>)}
                 </select>
               </div>
-              <div className="space-y-xs">
-                <label className="text-on-surface-variant block uppercase text-[11px] font-semibold">Submission Deadline *</label>
-                <input className="w-full h-10 px-md bg-white border border-outline-variant rounded-lg text-[14px] focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+              <div>
+                <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-1.5">Submission Deadline *</label>
+                <input className="w-full h-10 px-3 bg-white border border-slate-200 rounded-xl text-[14px] text-slate-800 focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition-all"
                   required type="date" value={rfqDetails.deadline} onChange={set('deadline')} />
               </div>
-              <div className="space-y-xs md:col-span-2">
-                <label className="text-on-surface-variant block uppercase text-[11px] font-semibold">Description & Scope</label>
-                <textarea className="w-full h-24 p-md bg-white border border-outline-variant rounded-lg text-[14px] focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none resize-none"
+              <div className="md:col-span-2">
+                <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-1.5">Description & Scope</label>
+                <textarea className="w-full h-24 p-3 bg-white border border-slate-200 rounded-xl text-[14px] text-slate-800 focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 outline-none resize-none transition-all"
                   placeholder="Detail your requirements, delivery expectations, compliance standards..."
                   value={rfqDetails.description} onChange={set('description')} />
               </div>
@@ -154,49 +205,46 @@ const CreateRFQ = () => {
           </div>
 
           {/* ── Section 2: Line Items ── */}
-          <div className="bg-white rounded-xl border border-outline-variant custom-shadow p-lg space-y-md">
-            <div className="flex justify-between items-center border-b pb-sm">
-              <h3 className="font-semibold text-[16px] flex items-center gap-sm">
-                <span className="w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center text-[12px] font-bold">2</span>
+          <div className="card p-6 space-y-4">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <h3 className="font-bold text-[16px] text-slate-800 flex items-center gap-3">
+                <span className="w-6 h-6 bg-indigo-600 text-white rounded-full flex items-center justify-center text-[12px] font-bold flex-shrink-0">2</span>
                 Line Items
               </h3>
               <button type="button" onClick={addItem}
-                className="border border-primary text-primary px-md py-1 rounded-lg hover:bg-primary-container/10 transition-colors font-semibold text-[12px] flex items-center gap-1">
-                <span className="material-symbols-outlined text-[16px]">add</span>Add Row
+                className="flex items-center gap-1.5 px-4 py-2 border border-indigo-400 text-indigo-600 hover:bg-indigo-50 rounded-xl font-semibold text-[12px] transition-all">
+                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>add</span>Add Row
               </button>
             </div>
-
-            {/* Header row */}
-            <div className="hidden md:grid grid-cols-12 gap-md px-xs">
-              <p className="col-span-1 text-[11px] text-on-surface-variant font-semibold uppercase">#</p>
-              <p className="col-span-4 text-[11px] text-on-surface-variant font-semibold uppercase">Item Name</p>
-              <p className="col-span-2 text-[11px] text-on-surface-variant font-semibold uppercase">Qty</p>
-              <p className="col-span-2 text-[11px] text-on-surface-variant font-semibold uppercase">Unit</p>
-              <p className="col-span-2 text-[11px] text-on-surface-variant font-semibold uppercase">Specifications</p>
+            <div className="hidden md:grid grid-cols-12 gap-3 px-1">
+              <p className="col-span-1 text-[11px] text-slate-400 font-bold uppercase">#</p>
+              <p className="col-span-4 text-[11px] text-slate-400 font-bold uppercase">Item Name</p>
+              <p className="col-span-2 text-[11px] text-slate-400 font-bold uppercase">Qty</p>
+              <p className="col-span-2 text-[11px] text-slate-400 font-bold uppercase">Unit</p>
+              <p className="col-span-2 text-[11px] text-slate-400 font-bold uppercase">Specifications</p>
               <p className="col-span-1"></p>
             </div>
-
-            <div className="space-y-sm">
+            <div className="space-y-3">
               {items.map((item, idx) => (
-                <div key={item.id} className="grid grid-cols-1 md:grid-cols-12 gap-sm items-center bg-surface-container-lowest rounded-lg p-sm md:p-xs md:bg-transparent md:rounded-none border md:border-none border-outline-variant/50">
-                  <div className="md:col-span-1 text-center font-semibold text-on-surface-variant text-[13px]">#{idx + 1}</div>
-                  <input className="md:col-span-4 h-9 px-md bg-white border border-outline-variant rounded-lg text-[13px] focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                <div key={item.id} className="grid grid-cols-1 md:grid-cols-12 gap-2 items-center">
+                  <div className="md:col-span-1 text-center font-semibold text-slate-400 text-[13px]">#{idx + 1}</div>
+                  <input className="md:col-span-4 h-9 px-3 bg-white border border-slate-200 rounded-xl text-[13px] focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition-all"
                     placeholder="Item / Service Name" required type="text"
                     value={item.name} onChange={e => changeItem(item.id, 'name', e.target.value)} />
-                  <input className="md:col-span-2 h-9 px-md bg-white border border-outline-variant rounded-lg text-[13px] focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                  <input className="md:col-span-2 h-9 px-3 bg-white border border-slate-200 rounded-xl text-[13px] focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition-all"
                     placeholder="Qty" required type="number" min="1"
                     value={item.quantity} onChange={e => changeItem(item.id, 'quantity', parseInt(e.target.value) || 1)} />
-                  <select className="md:col-span-2 h-9 px-md bg-white border border-outline-variant rounded-lg text-[13px] focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                  <select className="md:col-span-2 h-9 px-3 bg-white border border-slate-200 rounded-xl text-[13px] focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition-all appearance-none"
                     value={item.unit} onChange={e => changeItem(item.id, 'unit', e.target.value)}>
                     {UNITS.map(u => <option key={u}>{u}</option>)}
                   </select>
-                  <input className="md:col-span-2 h-9 px-md bg-white border border-outline-variant rounded-lg text-[13px] focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                  <input className="md:col-span-2 h-9 px-3 bg-white border border-slate-200 rounded-xl text-[13px] focus:ring-2 focus:ring-indigo-100 focus:border-indigo-400 outline-none transition-all"
                     placeholder="Specs / Standards" type="text"
                     value={item.spec} onChange={e => changeItem(item.id, 'spec', e.target.value)} />
                   <div className="md:col-span-1 flex justify-end">
                     <button type="button" onClick={() => removeItem(item.id)} disabled={items.length === 1}
-                      className="text-error hover:bg-error-container p-1 rounded-full transition-colors disabled:opacity-30">
-                      <span className="material-symbols-outlined text-[18px]">delete</span>
+                      className="w-8 h-8 flex items-center justify-center text-red-400 hover:bg-red-50 rounded-lg transition-all disabled:opacity-30">
+                      <span className="material-symbols-outlined" style={{ fontSize: 18 }}>delete</span>
                     </button>
                   </div>
                 </div>
@@ -205,45 +253,38 @@ const CreateRFQ = () => {
           </div>
 
           {/* ── Section 3: Assign Vendors ── */}
-          <div className="bg-white rounded-xl border border-outline-variant custom-shadow p-lg space-y-md">
-            <div className="flex justify-between items-center border-b pb-sm">
-              <h3 className="font-semibold text-[16px] flex items-center gap-sm">
-                <span className="w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center text-[12px] font-bold">3</span>
+          <div className="card p-6 space-y-4">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <h3 className="font-bold text-[16px] text-slate-800 flex items-center gap-3">
+                <span className="w-6 h-6 bg-indigo-600 text-white rounded-full flex items-center justify-center text-[12px] font-bold flex-shrink-0">3</span>
                 Assign Vendors
-                <span className="text-[12px] text-on-surface-variant font-normal ml-xs">
-                  {assignedVendorIds.length}/{activeVendors.length} selected
-                </span>
+                <span className="text-[12px] text-slate-400 font-normal">{assignedVendorIds.length}/{activeVendors.length} selected</span>
               </h3>
-              <div className="flex gap-sm">
-                <button type="button" onClick={selectAllVendors}
-                  className="text-primary text-[12px] font-semibold hover:underline">Select All</button>
-                <span className="text-outline-variant">|</span>
-                <button type="button" onClick={clearVendors}
-                  className="text-on-surface-variant text-[12px] font-semibold hover:underline">Clear</button>
+              <div className="flex gap-3">
+                <button type="button" onClick={selectAllVendors} className="text-indigo-600 text-[12px] font-bold hover:underline">Select All</button>
+                <span className="text-slate-300">|</span>
+                <button type="button" onClick={clearVendors} className="text-slate-400 text-[12px] font-bold hover:underline">Clear</button>
               </div>
             </div>
-
             {activeVendors.length === 0 ? (
-              <p className="text-on-surface-variant text-[14px] text-center py-md">No active vendors available. Go to Vendors to approve some first.</p>
+              <p className="text-slate-400 text-[14px] text-center py-6">No active vendors. Go to Vendors to approve some first.</p>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-sm">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 {activeVendors.map(v => {
-                  const selected = assignedVendorIds.includes(v.id);
+                  const sel = assignedVendorIds.includes(v.id);
                   return (
                     <button key={v.id} type="button" onClick={() => toggleVendor(v.id)}
-                      className={`flex items-center gap-md p-md rounded-lg border-2 transition-all text-left ${
-                        selected
-                          ? 'border-primary bg-primary-container/10'
-                          : 'border-outline-variant hover:border-primary/40'
+                      className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-left ${
+                        sel ? 'border-indigo-500 bg-indigo-50' : 'border-slate-200 hover:border-indigo-300'
                       }`}>
-                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${
-                        selected ? 'bg-primary border-primary' : 'border-outline-variant'
+                      <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all ${
+                        sel ? 'bg-indigo-600 border-indigo-600' : 'border-slate-300'
                       }`}>
-                        {selected && <span className="material-symbols-outlined text-white text-[14px]">check</span>}
+                        {sel && <span className="material-symbols-outlined text-white" style={{ fontSize: 13 }}>check</span>}
                       </div>
                       <div className="min-w-0">
-                        <p className="font-semibold text-[13px] truncate">{v.name}</p>
-                        <p className="text-[11px] text-on-surface-variant">{v.category} · ⭐ {v.rating}</p>
+                        <p className="font-semibold text-[13px] text-slate-800 truncate">{v.name}</p>
+                        <p className="text-[11px] text-slate-400">{v.category} · {v.rating}/5</p>
                       </div>
                     </button>
                   );
@@ -253,29 +294,29 @@ const CreateRFQ = () => {
           </div>
 
           {/* ── Section 4: Attachments ── */}
-          <div className="bg-white rounded-xl border border-outline-variant custom-shadow p-lg space-y-md">
-            <h3 className="font-semibold text-[16px] border-b pb-sm flex items-center gap-sm">
-              <span className="w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center text-[12px] font-bold">4</span>
+          <div className="card p-6 space-y-4">
+            <h3 className="font-bold text-[16px] text-slate-800 border-b border-slate-100 pb-3 flex items-center gap-3">
+              <span className="w-6 h-6 bg-indigo-600 text-white rounded-full flex items-center justify-center text-[12px] font-bold flex-shrink-0">4</span>
               Attachments
-              <span className="text-[12px] text-on-surface-variant font-normal">Optional</span>
+              <span className="text-[12px] text-slate-400 font-normal">Optional</span>
             </h3>
-            <label className="flex flex-col items-center justify-center border-2 border-dashed border-outline-variant rounded-xl p-xl cursor-pointer hover:border-primary hover:bg-primary-container/5 transition-all group">
-              <span className="material-symbols-outlined text-[40px] text-on-surface-variant group-hover:text-primary mb-sm">upload_file</span>
-              <p className="font-semibold text-[14px]">Click to upload files</p>
-              <p className="text-[12px] text-on-surface-variant mt-xs">Technical specs, drawings, compliance docs, reference images</p>
+            <label className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-xl py-10 cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/40 transition-all group">
+              <span className="material-symbols-outlined text-slate-300 group-hover:text-indigo-400 mb-2" style={{ fontSize: 40 }}>upload_file</span>
+              <p className="font-semibold text-[14px] text-slate-600">Click to upload files</p>
+              <p className="text-[12px] text-slate-400 mt-1">Technical specs, drawings, compliance docs, images</p>
               <input type="file" multiple className="hidden" onChange={handleAttachment} accept=".pdf,.doc,.docx,.png,.jpg,.xlsx" />
             </label>
             {attachments.length > 0 && (
-              <div className="space-y-xs">
+              <div className="space-y-2">
                 {attachments.map(name => (
-                  <div key={name} className="flex items-center justify-between bg-surface-container-low px-md py-sm rounded-lg">
-                    <div className="flex items-center gap-sm">
-                      <span className="material-symbols-outlined text-primary text-[18px]">attach_file</span>
-                      <span className="text-[13px] font-medium">{name}</span>
+                  <div key={name} className="flex items-center justify-between bg-slate-50 px-4 py-2.5 rounded-xl border border-slate-200">
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-indigo-500" style={{ fontSize: 18 }}>attach_file</span>
+                      <span className="text-[13px] font-medium text-slate-700">{name}</span>
                     </div>
                     <button type="button" onClick={() => removeAttachment(name)}
-                      className="text-on-surface-variant hover:text-error transition-colors">
-                      <span className="material-symbols-outlined text-[18px]">close</span>
+                      className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all">
+                      <span className="material-symbols-outlined" style={{ fontSize: 17 }}>close</span>
                     </button>
                   </div>
                 ))}
@@ -284,27 +325,27 @@ const CreateRFQ = () => {
           </div>
 
           {/* ── Actions ── */}
-          <div className="flex flex-col sm:flex-row justify-end gap-sm pb-xl">
+          <div className="flex flex-col sm:flex-row justify-end gap-3">
             <button type="button" onClick={() => navigate('/dashboard')}
-              className="border border-outline-variant hover:bg-surface-container-low text-on-surface px-lg py-sm rounded-lg font-semibold text-[13px] transition-colors">
+              className="h-10 px-6 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl font-semibold text-[13px] transition-all">
               Cancel
             </button>
             <button type="button" onClick={() => buildAndSave(true)}
               disabled={!rfqDetails.title || !rfqDetails.deadline}
-              className="border-2 border-primary text-primary px-lg py-sm rounded-lg font-semibold text-[13px] hover:bg-primary-container/10 transition-all disabled:opacity-40 flex items-center gap-xs">
-              <span className="material-symbols-outlined text-[16px]">save</span>
+              className="h-10 px-6 border-2 border-indigo-500 text-indigo-600 hover:bg-indigo-50 rounded-xl font-semibold text-[13px] transition-all disabled:opacity-40 flex items-center gap-2">
+              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>save</span>
               Save as Draft
             </button>
             <button type="button" onClick={() => buildAndSave(false)}
               disabled={!rfqDetails.title || !rfqDetails.deadline}
-              className="bg-primary text-white px-lg py-sm rounded-lg font-semibold text-[13px] hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-40 flex items-center gap-xs">
-              <span className="material-symbols-outlined text-[16px]">send</span>
+              className="h-10 px-6 text-white rounded-xl font-bold text-[13px] transition-all disabled:opacity-40 flex items-center gap-2 hover:opacity-90 active:scale-[0.98]"
+              style={{ background: 'linear-gradient(135deg,#4F46E5,#7C3AED)', boxShadow: '0 4px 14px rgba(79,70,229,.4)' }}>
+              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>send</span>
               Send to Vendors
             </button>
           </div>
-        </main>
       </div>
-    </div>
+    </Layout>
   );
 };
 

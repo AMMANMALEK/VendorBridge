@@ -15,16 +15,29 @@ import Reports from './pages/Reports';
 import ActivityLogs from './pages/ActivityLogs';
 import AdminUserManagement from './pages/AdminUserManagement';
 
+// Full-screen loading spinner while auth state is being resolved
+const LoadingScreen = () => (
+  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#f9f9ff' }}>
+    <div style={{ textAlign: 'center' }}>
+      <div style={{ width: 40, height: 40, border: '4px solid #c2c6d4', borderTopColor: '#0053a6', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 12px' }} />
+      <p style={{ color: '#424752', fontSize: 14 }}>Loading VendorBridge...</p>
+    </div>
+    <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+  </div>
+);
+
 // Redirect unauthenticated users to login
 const ProtectedRoute = ({ children }) => {
-  const { user } = useAppState();
+  const { user, isLoading } = useAppState();
+  if (isLoading) return <LoadingScreen />;
   if (!user) return <Navigate to="/login" replace />;
   return children;
 };
 
 // Block a route for roles not in `allowedRoles`; redirects to their home
 const RoleRoute = ({ children, allowedRoles }) => {
-  const { user } = useAppState();
+  const { user, isLoading } = useAppState();
+  if (isLoading) return <LoadingScreen />;
   if (!user) return <Navigate to="/login" replace />;
   if (!allowedRoles.includes(user.role)) {
     return <Navigate to={user.role === 'vendor' ? '/submit-quotation' : '/dashboard'} replace />;
@@ -33,7 +46,7 @@ const RoleRoute = ({ children, allowedRoles }) => {
 };
 
 function AppRoutes() {
-  const { user } = useAppState();
+  const { user, isLoading } = useAppState();
 
   return (
     <Routes>
@@ -113,9 +126,11 @@ function AppRoutes() {
 
       {/* Fallback — send to correct home based on role */}
       <Route path="*" element={
-        user
-          ? <Navigate to={user.role === 'vendor' ? '/submit-quotation' : '/dashboard'} replace />
-          : <Navigate to="/login" replace />
+        isLoading
+          ? <LoadingScreen />
+          : user
+            ? <Navigate to={user.role === 'vendor' ? '/submit-quotation' : '/dashboard'} replace />
+            : <Navigate to="/login" replace />
       } />
     </Routes>
   );
