@@ -3,10 +3,12 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAppState } from '../context/StateContext';
 
 const DEMO_ACCOUNTS = [
-  { role: 'Admin',               symbol: '👑', email: 'admin@vendorbridge.com',   password: 'Admin@123',   color: 'border-purple-400 bg-purple-50' },
-  { role: 'Procurement Officer', symbol: '📋', email: 'officer@vendorbridge.com', password: 'Officer@123', color: 'border-blue-400 bg-blue-50' },
-  { role: 'Manager / Approver',  symbol: '✅', email: 'manager@vendorbridge.com', password: 'Manager@123', color: 'border-green-400 bg-green-50' },
-  { role: 'Vendor',              symbol: '🏭', email: 'vendor@infrasupp.com',     password: 'Vendor@123',  color: 'border-orange-400 bg-orange-50' }
+  { role: 'Admin',               symbol: '👑', email: 'admin@vendorbridge.com',    password: 'Admin@123',   color: 'border-purple-400 bg-purple-50' },
+  { role: 'Procurement Officer', symbol: '📋', email: 'officer@vendorbridge.com',  password: 'Officer@123', color: 'border-blue-400 bg-blue-50' },
+  { role: 'Manager / Approver',  symbol: '✅', email: 'manager@vendorbridge.com',  password: 'Manager@123', color: 'border-green-400 bg-green-50' },
+  { role: 'Vendor — Infra Supplies',   symbol: '🏭', email: 'vendor@infrasupp.com',      password: 'Vendor@123',  color: 'border-orange-400 bg-orange-50' },
+  { role: 'Vendor — Global Tech',      symbol: '🏭', email: 'vendor@globaltech.com',     password: 'Global@123',  color: 'border-orange-400 bg-orange-50' },
+  { role: 'Vendor — Aura Logistics',   symbol: '🏭', email: 'vendor@auralogistics.in',   password: 'Aura@1234',   color: 'border-orange-400 bg-orange-50' },
 ];
 
 const Login = () => {
@@ -80,24 +82,7 @@ const Login = () => {
           </div>
         </div>
 
-        {/* Demo accounts */}
-        <div className="relative z-10 bg-white/10 backdrop-blur-md rounded-xl border border-white/20 p-lg space-y-sm">
-          <p className="text-white/80 text-xs font-semibold uppercase tracking-wider mb-sm">Demo Accounts — click to fill</p>
-          <div className="grid grid-cols-2 gap-sm">
-            {DEMO_ACCOUNTS.map(acc => (
-              <button
-                key={acc.email}
-                onClick={() => fillDemo(acc)}
-                className="text-left bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg p-sm transition-all"
-              >
-                <p className="text-white font-semibold text-[13px]">{acc.symbol} {acc.role}</p>
-                <p className="text-white/60 text-[11px] mt-0.5 truncate">{acc.email}</p>
-                <p className="text-white/50 text-[11px]">pw: {acc.password}</p>
-              </button>
-            ))}
-          </div>
-        </div>
-
+        {/* Footer */}
         <div className="relative z-10 text-white/50 font-body-sm text-[12px]">
           © 2026 VendorBridge Enterprise
         </div>
@@ -114,23 +99,6 @@ const Login = () => {
           <div className="mb-xl">
             <h1 className="font-h1 text-h1 text-on-surface mb-xs">Welcome back</h1>
             <p className="font-body-md text-on-surface-variant text-[14px]">Access your enterprise procurement dashboard.</p>
-          </div>
-
-          {/* Mobile demo accounts */}
-          <div className="lg:hidden mb-lg">
-            <p className="text-on-surface-variant text-xs font-semibold uppercase tracking-wider mb-sm">Demo Accounts</p>
-            <div className="grid grid-cols-2 gap-sm">
-              {DEMO_ACCOUNTS.map(acc => (
-                <button
-                  key={acc.email}
-                  onClick={() => fillDemo(acc)}
-                  className={`text-left border-2 rounded-lg p-sm transition-all ${acc.color}`}
-                >
-                  <p className="font-semibold text-[12px] text-on-surface">{acc.symbol} {acc.role}</p>
-                  <p className="text-on-surface-variant text-[11px] truncate">{acc.email}</p>
-                </button>
-              ))}
-            </div>
           </div>
 
           <form className="space-y-lg animate-fade-in" onSubmit={handleSubmit}>

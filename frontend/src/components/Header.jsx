@@ -1,98 +1,159 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppState } from '../context/StateContext';
 
+const ROLE_COLORS = {
+  admin:   'bg-purple-100 text-purple-700',
+  officer: 'bg-blue-100 text-blue-700',
+  manager: 'bg-emerald-100 text-emerald-700',
+  vendor:  'bg-orange-100 text-orange-700',
+};
+
 const Header = ({ title }) => {
-  const { user, logout, approvals } = useAppState();
+  const { user, logout, approvals, rejectedRFQs } = useAppState();
+  const navigate = useNavigate();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [notifOpen, setNotifOpen]       = useState(false);
+
   const pendingApprovals = approvals.filter(a => a.status === 'Pending');
+  const role = user?.role || 'officer';
+  const totalAlerts = pendingApprovals.length + (rejectedRFQs?.length || 0);
 
   const handleLogout = () => {
-    if (confirm("Are you sure you want to sign out?")) {
+    if (confirm('Sign out of VendorBridge?')) {
       logout();
+      navigate('/login');
     }
   };
 
   return (
-    <header className="fixed top-0 right-0 h-header_height z-10 bg-white border-b border-outline-variant flex justify-between items-center px-xl ml-sidebar_width w-[calc(100%-theme(spacing.sidebar_width))] shadow-sm">
-      <div className="flex items-center gap-lg flex-1">
-        <h2 className="font-h3 text-h3 text-on-surface lg:block hidden">{title}</h2>
-        <div className="relative w-full max-w-md ml-4">
-          <span className="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-outline">search</span>
+    <header className="fixed top-0 right-0 h-14 z-10 bg-white border-b border-slate-100 flex items-center justify-between px-6 shadow-[0_1px_3px_rgba(0,0,0,0.06)]"
+      style={{ left: '240px', width: 'calc(100% - 240px)' }}>
+
+      {/* Left: page title */}
+      <div className="flex items-center gap-3">
+        <h2 className="text-[15px] font-semibold text-slate-800 hidden sm:block">{title}</h2>
+      </div>
+
+      {/* Center: search */}
+      <div className="flex-1 max-w-sm mx-6 hidden md:block">
+        <div className="relative">
+          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[16px]">search</span>
           <input
-            className="w-full pl-xl pr-md py-xs bg-surface-container-low border border-outline-variant rounded-lg font-body-md focus:ring-2 focus:ring-primary focus:border-primary outline-none text-[14px]"
-            placeholder="Search orders, vendors, or invoices..."
+            className="w-full h-8 pl-9 pr-3 bg-slate-50 border border-slate-200 rounded-lg text-[13px] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all"
+            placeholder="Search vendors, orders, RFQs…"
             type="text"
           />
         </div>
       </div>
 
-      <div className="flex items-center gap-md relative">
-        {/* Notifications */}
-        <div className="relative group">
-          <button className="p-xs text-on-surface-variant hover:bg-surface-container-low rounded-full transition-transform active:scale-95 flex items-center justify-center">
-            <span className="material-symbols-outlined">notifications</span>
-            {pendingApprovals.length > 0 && (
-              <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-error rounded-full ring-2 ring-white"></span>
+      {/* Right: actions + profile */}
+      <div className="flex items-center gap-1">
+
+        {/* Notifications bell */}
+        <div className="relative">
+          <button
+            onClick={() => { setNotifOpen(v => !v); setDropdownOpen(false); }}
+            className="relative w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-all"
+          >
+            <span className="material-symbols-outlined text-[20px]">notifications</span>
+            {totalAlerts > 0 && (
+              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white"></span>
             )}
           </button>
-          
-          {/* Notifications Dropdown */}
-          <div className="absolute right-0 mt-2 w-80 bg-white border border-outline-variant rounded-xl shadow-lg opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity z-50 duration-200 p-sm">
-            <h4 className="font-semibold text-body-md border-b pb-sm mb-sm px-sm">Recent Tasks</h4>
-            {pendingApprovals.length === 0 ? (
-              <p className="text-on-surface-variant text-body-sm p-md text-center">No pending notifications</p>
-            ) : (
-              <div className="space-y-sm max-h-60 overflow-y-auto">
-                {pendingApprovals.slice(0, 3).map(a => (
-                  <div key={a.id} className="p-sm bg-surface-container-low hover:bg-surface-container rounded-lg text-left text-body-sm transition-colors">
-                    <p className="font-semibold">{a.type}</p>
-                    <p className="text-[11px] text-on-surface-variant">{a.title}</p>
-                    <p className="text-[11px] text-primary mt-1">₹{a.amount?.toLocaleString()}</p>
-                  </div>
-                ))}
+
+          {notifOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setNotifOpen(false)} />
+              <div className="absolute right-0 mt-1 w-80 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden animate-fade-in">
+                <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+                  <p className="font-semibold text-[13px] text-slate-800">Notifications</p>
+                  {totalAlerts > 0 && (
+                    <span className="text-[10px] bg-red-500 text-white px-2 py-0.5 rounded-full font-bold">{totalAlerts} new</span>
+                  )}
+                </div>
+                <div className="max-h-72 overflow-y-auto">
+                  {totalAlerts === 0 ? (
+                    <div className="flex flex-col items-center py-8 text-slate-400">
+                      <span className="material-symbols-outlined text-[36px] mb-2">notifications_none</span>
+                      <p className="text-[13px]">All caught up!</p>
+                    </div>
+                  ) : (
+                    <>
+                      {pendingApprovals.slice(0, 3).map(a => (
+                        <button key={a.id}
+                          onClick={() => { navigate('/approvals'); setNotifOpen(false); }}
+                          className="w-full px-4 py-3 flex items-start gap-3 hover:bg-slate-50 transition-colors border-b border-slate-50 text-left">
+                          <div className="w-7 h-7 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <span className="material-symbols-outlined text-[14px]">fact_check</span>
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[12px] font-semibold text-slate-800 truncate">{a.type}</p>
+                            <p className="text-[11px] text-slate-500 truncate">{a.title}</p>
+                            <p className="text-[11px] text-blue-600 font-medium mt-0.5">₹{a.amount?.toLocaleString()}</p>
+                          </div>
+                        </button>
+                      ))}
+                      {(rejectedRFQs || []).slice(0, 2).map(r => (
+                        <button key={r.id}
+                          onClick={() => { navigate('/quotation-comparison', { state: { rfqId: r.id } }); setNotifOpen(false); }}
+                          className="w-full px-4 py-3 flex items-start gap-3 hover:bg-slate-50 transition-colors border-b border-slate-50 text-left">
+                          <div className="w-7 h-7 bg-red-100 text-red-600 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <span className="material-symbols-outlined text-[14px]">cancel</span>
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[12px] font-semibold text-slate-800 truncate">Rejection — Action Required</p>
+                            <p className="text-[11px] text-slate-500 truncate">{r.title}</p>
+                            <p className="text-[11px] text-red-500 font-medium mt-0.5">Re-select vendor</p>
+                          </div>
+                        </button>
+                      ))}
+                    </>
+                  )}
+                </div>
               </div>
-            )}
-          </div>
+            </>
+          )}
         </div>
 
-        <button className="p-xs text-on-surface-variant hover:bg-surface-container-low rounded-full transition-transform active:scale-95">
-          <span className="material-symbols-outlined">settings</span>
-        </button>
+        <div className="w-px h-5 bg-slate-200 mx-1"></div>
 
-        <div className="h-8 w-px bg-outline-variant mx-xs"></div>
-
-        {/* User profile dropdown */}
+        {/* User dropdown */}
         <div className="relative">
-          <div 
-            className="flex items-center gap-sm cursor-pointer select-none"
-            onClick={() => setDropdownOpen(!dropdownOpen)}
+          <button
+            onClick={() => { setDropdownOpen(v => !v); setNotifOpen(false); }}
+            className="flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-slate-50 transition-all"
           >
-            <div className="text-right">
-              <p className="font-label-md text-on-surface text-[13px] font-semibold">{user ? user.name : 'Rahul Sharma'}</p>
-              <p className="text-xs text-on-surface-variant">{user ? user.role : 'Procurement Manager'}</p>
+            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-400 to-indigo-600 flex items-center justify-center text-[13px] text-white font-semibold flex-shrink-0">
+              {user?.symbol || user?.name?.[0] || '?'}
             </div>
-            <img
-              alt="User Avatar"
-              className="w-10 h-10 rounded-full border border-outline-variant object-cover hover:border-primary transition-colors"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuAtLBhNBj4lf05G23s0F7poFB4ZXD32SUjnuHJgrmJw5Hq6dNEbm6GsR7AlnQOOzzJEjzrPz20UhoH2rXBZjSGcqg8wvNehNgNve5sxXMS9Y8HLaScpKwSpaj2kMD6s8goSPUamZ7tGKZc6EOvNS3Ma0hLqdGf2FdESO_-U28Yve4ORv9YrTABHnOd1EgZ7JB1VttcBVj0x9-F6L7iVRHPDT_xora_cJsPsMmRvQGxPU6OpiVGejm1yWCITRB_sjdJC8NlCE-pMcZ8k"
-            />
-          </div>
+            <div className="text-left hidden sm:block">
+              <p className="text-[12px] font-semibold text-slate-800 leading-none">{user?.name || 'User'}</p>
+              <span className={`text-[10px] font-medium rounded px-1 ${ROLE_COLORS[role] || 'bg-slate-100 text-slate-600'}`}>
+                {user?.roleLabel || role}
+              </span>
+            </div>
+            <span className="material-symbols-outlined text-slate-400 text-[16px] hidden sm:block">expand_more</span>
+          </button>
 
           {dropdownOpen && (
             <>
-              <div className="fixed inset-0 z-40" onClick={() => setDropdownOpen(false)}></div>
-              <div className="absolute right-0 mt-sm w-48 bg-white border border-outline-variant rounded-xl shadow-lg z-50 py-sm">
-                <div className="px-md py-sm border-b border-outline-variant/50">
-                  <p className="font-semibold text-body-sm truncate">{user?.email}</p>
-                  <p className="text-[11px] text-on-surface-variant truncate">{user?.company}</p>
+              <div className="fixed inset-0 z-40" onClick={() => setDropdownOpen(false)} />
+              <div className="absolute right-0 mt-1 w-52 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden animate-fade-in">
+                <div className="px-4 py-3 border-b border-slate-100">
+                  <p className="text-[13px] font-semibold text-slate-800 truncate">{user?.name}</p>
+                  <p className="text-[11px] text-slate-500 truncate">{user?.email}</p>
+                  {user?.company && <p className="text-[11px] text-slate-400 truncate">{user.company}</p>}
                 </div>
-                <button 
-                  onClick={handleLogout}
-                  className="w-full text-left px-md py-sm hover:bg-error-container hover:text-on-error-container text-error text-body-sm flex items-center gap-sm transition-colors mt-xs"
-                >
-                  <span className="material-symbols-outlined text-[18px]">logout</span>
-                  Sign Out
-                </button>
+                <div className="py-1">
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center gap-2 px-4 py-2.5 text-[13px] text-red-600 hover:bg-red-50 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">logout</span>
+                    Sign Out
+                  </button>
+                </div>
               </div>
             </>
           )}

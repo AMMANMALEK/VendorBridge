@@ -26,10 +26,10 @@ const Reports = () => {
     <div className="flex min-h-screen bg-[#F7F9FC]">
       <Sidebar />
       
-      <div className="flex-1 ml-sidebar_width pt-header_height min-h-screen flex flex-col">
+      <div className="flex-1 ml-[240px] pt-14 min-h-screen flex flex-col">
         <Header title="Reports & Procurement Analytics" />
 
-        <main className="p-xl max-w-container_max_width w-full mx-auto flex-1 animate-fade-in space-y-lg">
+        <main className="p-xl max-w-7xl w-full mx-auto flex-1 animate-fade-in space-y-lg">
           {/* Spend Summary */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-lg">
             <div className="bg-white p-lg rounded-xl border border-outline-variant custom-shadow">

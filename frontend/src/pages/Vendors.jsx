@@ -75,10 +75,10 @@ const Vendors = () => {
     <div className="flex min-h-screen bg-[#F7F9FC]">
       <Sidebar />
 
-      <div className="flex-1 ml-sidebar_width pt-header_height min-h-screen flex flex-col">
+      <div className="flex-1 ml-[240px] pt-14 min-h-screen flex flex-col">
         <Header title="Vendor Management" />
 
-        <main className="p-xl max-w-container_max_width w-full mx-auto flex-1 flex flex-col lg:flex-row gap-lg animate-fade-in">
+        <main className="p-xl max-w-7xl w-full mx-auto flex-1 flex flex-col lg:flex-row gap-lg animate-fade-in">
           {/* Main List */}
           <section className="flex-1 bg-white rounded-xl border border-outline-variant custom-shadow flex flex-col overflow-hidden">
 

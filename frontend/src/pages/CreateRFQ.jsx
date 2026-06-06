@@ -17,9 +17,9 @@ const AdminRFQView = ({ rfqs }) => {
   return (
     <div className="flex min-h-screen bg-[#F7F9FC]">
       <Sidebar />
-      <div className="flex-1 ml-sidebar_width pt-header_height min-h-screen flex flex-col">
+      <div className="flex-1 ml-[240px] pt-14 min-h-screen flex flex-col">
         <Header title="All RFQs" />
-        <main className="p-xl max-w-container_max_width w-full mx-auto flex-1 animate-fade-in">
+        <main className="p-xl max-w-7xl w-full mx-auto flex-1 animate-fade-in">
           <div className="bg-purple-50 border border-purple-200 text-purple-800 px-lg py-sm rounded-lg text-[13px] font-medium mb-lg flex items-center gap-sm">
             <span className="material-symbols-outlined text-[18px]">visibility</span>
             Admin view — all RFQs across the organization. Only Procurement Officers can create RFQs.
@@ -114,10 +114,10 @@ const CreateRFQ = () => {
   return (
     <div className="flex min-h-screen bg-[#F7F9FC]">
       <Sidebar />
-      <div className="flex-1 ml-sidebar_width pt-header_height min-h-screen flex flex-col">
+      <div className="flex-1 ml-[240px] pt-14 min-h-screen flex flex-col">
         <Header title="Create Request for Quotation" />
 
-        <main className="p-xl max-w-container_max_width w-full mx-auto flex-1 animate-fade-in space-y-lg pb-xl">
+        <main className="p-xl max-w-7xl w-full mx-auto flex-1 animate-fade-in space-y-lg pb-xl">
 
           {/* ── Section 1: RFQ Details ── */}
           <div className="bg-white rounded-xl border border-outline-variant custom-shadow p-lg space-y-md">

@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppState } from '../context/StateContext';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 
 const QuotationComparison = () => {
-  const { rfqs, quotations, vendors, approveQuotation, user } = useAppState();
+  const { rfqs, quotations, vendors, approveQuotation, clearRejectionNotice, user } = useAppState();
   const navigate = useNavigate();
+  const location = useLocation();
   const role = user?.role || 'officer';
   const canSelect = role === 'officer';
 
@@ -14,13 +15,22 @@ const QuotationComparison = () => {
     quotations.some(q => q.rfqId === r.id) || r.status === 'Open'
   );
 
+  // If navigating from Dashboard with a specific rfqId, pre-select it
+  const preselectedRFQId = location.state?.rfqId || null;
+
   const [selectedRFQId, setSelectedRFQId] = useState(
-    rfqsWithQuotes[0]?.id || ''
+    preselectedRFQId || rfqsWithQuotes[0]?.id || ''
   );
   const [confirmVendor, setConfirmVendor] = useState(null);
 
+  // Re-apply preselection if location state changes (e.g. navigating from an alert)
+  useEffect(() => {
+    if (preselectedRFQId) setSelectedRFQId(preselectedRFQId);
+  }, [preselectedRFQId]);
+
   const activeRFQ = rfqs.find(r => r.id === selectedRFQId);
   const activeQuotes = quotations.filter(q => q.rfqId === selectedRFQId);
+  const rejectionNotice = activeRFQ?.rejectionNotice || null;
 
   const minAmount = activeQuotes.length ? Math.min(...activeQuotes.map(q => q.amount)) : null;
   const minDelivery = activeQuotes.length ? Math.min(...activeQuotes.map(q => q.deliveryDays)) : null;
@@ -32,10 +42,22 @@ const QuotationComparison = () => {
 
   const handleConfirmSelect = () => {
     if (!confirmVendor) return;
+    if (activeRFQ?.rejectionNotice) clearRejectionNotice(activeRFQ.id);
     approveQuotation(confirmVendor.id);
     setConfirmVendor(null);
     alert(`✅ ${confirmVendor.vendorName} selected! Approval workflow has been initiated.\n\nThe Manager has been notified to review and sign off.`);
     navigate('/approvals');
+  };
+
+  // A quote is "selectable" when:
+  // - officer role
+  // - status is 'Pending'  OR  (there's a rejection notice and this quote was previously approved — allow re-selection)
+  const isSelectable = (q) => {
+    if (!canSelect) return false;
+    if (q.status === 'Pending') return true;
+    // After a rejection the previously-approved quote should also be re-selectable
+    if (rejectionNotice && q.status === 'Approved') return true;
+    return false;
   };
 
   const ROWS = [
@@ -49,10 +71,10 @@ const QuotationComparison = () => {
   return (
     <div className="flex min-h-screen bg-[#F7F9FC]">
       <Sidebar />
-      <div className="flex-1 ml-sidebar_width pt-header_height min-h-screen flex flex-col">
+      <div className="flex-1 ml-[240px] pt-14 min-h-screen flex flex-col">
         <Header title="Quotation Comparison" />
 
-        <main className="p-xl max-w-container_max_width w-full mx-auto flex-1 animate-fade-in space-y-lg">
+        <main className="p-xl max-w-7xl w-full mx-auto flex-1 animate-fade-in space-y-lg">
 
           {/* RFQ selector */}
           <div className="bg-white rounded-xl border border-outline-variant custom-shadow p-lg flex flex-col md:flex-row md:items-center justify-between gap-md">
@@ -89,7 +111,33 @@ const QuotationComparison = () => {
             </div>
           ) : (
             <>
-              {/* Side-by-side comparison table */}
+              {/* ── Rejection notice banner ── */}
+              {rejectionNotice && canSelect && (
+                <div className="bg-red-50 border-2 border-error/40 rounded-xl p-lg space-y-sm">
+                  <div className="flex items-center gap-sm">
+                    <span className="material-symbols-outlined text-error text-[24px]">cancel</span>
+                    <div>
+                      <p className="font-bold text-[15px] text-error">Request Rejected by Manager</p>
+                      <p className="text-[12px] text-on-surface-variant mt-0.5">
+                        Rejected by {rejectionNotice.rejectedBy} · {new Date(rejectionNotice.rejectedAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="bg-white border border-error/20 rounded-lg px-md py-sm">
+                    <p className="text-[11px] text-on-surface-variant uppercase font-semibold mb-xs">Rejection Reason</p>
+                    <p className="text-[14px] font-medium text-on-surface italic">"{rejectionNotice.reason}"</p>
+                  </div>
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg px-md py-sm flex items-start gap-sm">
+                    <span className="material-symbols-outlined text-blue-600 text-[18px] mt-0.5">info</span>
+                    <div>
+                      <p className="text-[13px] font-semibold text-blue-800">Action Required</p>
+                      <p className="text-[12px] text-blue-700 mt-0.5">
+                        Review all quotes below, reconsider your vendor choice, and select again to restart the approval workflow.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}              {/* Side-by-side comparison table */}
               <div className="bg-white rounded-xl border border-outline-variant custom-shadow overflow-x-auto">
                 <table className="w-full text-left min-w-[600px]">
                   <thead>
@@ -101,9 +149,10 @@ const QuotationComparison = () => {
                       {activeQuotes.map(q => {
                         const isBestPrice = q.amount === minAmount;
                         const isApproved = q.status === 'Approved';
+                        const isPreviouslyApproved = isApproved && rejectionNotice;
                         return (
                           <th key={q.id} className={`px-lg py-md text-center relative ${
-                            isApproved ? 'bg-secondary-container/20' :
+                            isApproved && !rejectionNotice ? 'bg-secondary-container/20' :
                             isBestPrice ? 'bg-emerald-50' : 'bg-surface-container-lowest'
                           }`}>
                             <div className="flex flex-col items-center gap-xs">
@@ -116,7 +165,10 @@ const QuotationComparison = () => {
                               {q.deliveryDays === minDelivery && !isApproved && (
                                 <span className="bg-sky-600 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full">Fastest</span>
                               )}
-                              {isApproved && (
+                              {isPreviouslyApproved && (
+                                <span className="bg-amber-500 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full">Previously Selected</span>
+                              )}
+                              {isApproved && !rejectionNotice && (
                                 <span className="bg-secondary text-white text-[10px] font-semibold px-2 py-0.5 rounded-full">Selected</span>
                               )}
                             </div>
@@ -134,7 +186,7 @@ const QuotationComparison = () => {
                         {activeQuotes.map(q => {
                           const val = row.key === '_rating' ? null : q[row.key];
                           const isHighlighted = row.highlight(q);
-                          const isApproved = q.status === 'Approved';
+                          const isApproved = q.status === 'Approved' && !rejectionNotice;
                           return (
                             <td key={q.id} className={`px-lg py-md text-center font-semibold text-[15px] ${
                               isApproved ? 'bg-secondary-container/10' :
@@ -159,18 +211,18 @@ const QuotationComparison = () => {
                     <tr className="bg-surface-container-lowest">
                       <td className="px-lg py-md text-[12px] font-semibold text-on-surface-variant uppercase">Action</td>
                       {activeQuotes.map(q => (
-                        <td key={q.id} className={`px-lg py-md text-center ${q.status === 'Approved' ? 'bg-secondary-container/10' : ''}`}>
-                          {q.status === 'Pending' && canSelect && (
+                        <td key={q.id} className={`px-lg py-md text-center ${q.status === 'Approved' && !rejectionNotice ? 'bg-secondary-container/10' : ''}`}>
+                          {isSelectable(q) && (
                             <button onClick={() => setConfirmVendor(q)}
                               className="bg-primary text-white px-md py-sm rounded-lg hover:opacity-90 transition-all font-semibold text-[12px] flex items-center gap-xs mx-auto">
                               <span className="material-symbols-outlined text-[15px]">thumb_up</span>
-                              Select & Approve
+                              {rejectionNotice && q.status === 'Approved' ? 'Re-select' : 'Select & Approve'}
                             </button>
                           )}
                           {q.status === 'Pending' && !canSelect && (
                             <span className="text-[12px] text-on-surface-variant font-medium">👁️ View only</span>
                           )}
-                          {q.status === 'Approved' && (
+                          {q.status === 'Approved' && !rejectionNotice && (
                             <div className="bg-secondary-container/30 text-on-secondary-container py-sm px-md rounded-lg font-semibold text-[12px] border border-secondary/20 inline-block">
                               ✅ Accepted Bid
                             </div>

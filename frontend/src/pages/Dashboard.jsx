@@ -5,7 +5,7 @@ import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 
 const Dashboard = () => {
-  const { rfqs, approvals, pos, invoices, vendors, registeredUsers, user } = useAppState();
+  const { rfqs, approvals, pos, invoices, vendors, registeredUsers, user, rejectedRFQs } = useAppState();
   const navigate = useNavigate();
 
   // Dynamic calculations
@@ -46,10 +46,10 @@ const Dashboard = () => {
     <div className="flex min-h-screen bg-[#F7F9FC]">
       <Sidebar />
       
-      <div className="flex-1 ml-sidebar_width pt-header_height min-h-screen flex flex-col">
+      <div className="flex-1 ml-[240px] pt-14 min-h-screen flex flex-col">
         <Header title="Dashboard" />
 
-        <main className="p-xl max-w-container_max_width w-full mx-auto flex-1 animate-fade-in">
+        <main className="p-xl max-w-7xl w-full mx-auto flex-1 animate-fade-in">
           {/* Welcome Header */}
           <div className="mb-xl">
             <div className="flex items-center gap-sm mb-xs">
@@ -204,6 +204,36 @@ const Dashboard = () => {
               </div>
             </div>
           </div>
+
+          {/* Officer: Rejection alerts */}
+          {role === 'officer' && rejectedRFQs.length > 0 && (
+            <div className="bg-red-50 border-2 border-error/30 rounded-xl p-lg mb-xl space-y-sm">
+              <div className="flex items-center gap-sm mb-xs">
+                <span className="material-symbols-outlined text-error">cancel</span>
+                <h3 className="font-semibold text-[15px] text-error">
+                  {rejectedRFQs.length} Request{rejectedRFQs.length > 1 ? 's' : ''} Rejected — Action Required
+                </h3>
+              </div>
+              {rejectedRFQs.map(rfq => (
+                <div key={rfq.id}
+                  className="bg-white border border-error/20 rounded-lg p-md cursor-pointer hover:border-error/40 transition-colors"
+                  onClick={() => navigate('/quotation-comparison', { state: { rfqId: rfq.id } })}>
+                  <div className="flex items-start justify-between gap-md">
+                    <div>
+                      <p className="font-semibold text-[14px]">{rfq.title}</p>
+                      <p className="text-[12px] text-on-surface-variant mt-xs">
+                        Rejected by {rfq.rejectionNotice.rejectedBy}
+                      </p>
+                      <p className="text-[13px] text-error italic mt-xs">
+                        "{rfq.rejectionNotice.reason}"
+                      </p>
+                    </div>
+                    <span className="text-primary text-[12px] font-semibold whitespace-nowrap">Re-select →</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Admin: Notifications + pending vendor alerts */}
           {role === 'admin' && (pendingVendors.length > 0 || overdueInvoicesCount > 0 || pendingApprovalsCount > 0) && (
