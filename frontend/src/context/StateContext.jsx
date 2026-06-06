@@ -235,7 +235,7 @@ export const StateProvider = ({ children }) => {
     setLogs(prev => [newLog, ...prev]);
   };
 
-  const refreshData = async (authToken, currentUser) => {
+  const refreshData = async (authToken, currentUser = user) => {
     if (!authToken) return;
     try {
       const requests = [];
