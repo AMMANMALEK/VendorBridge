@@ -94,6 +94,14 @@ const Vendors = () => {
     <Layout title="Vendor Management">
       <div className="flex flex-col lg:flex-row gap-5 h-full">
 
+<<<<<<< HEAD
+      <div className="flex-1 ml-[240px] pt-14 min-h-screen flex flex-col">
+        <Header title="Vendor Management" />
+
+        <main className="p-xl max-w-7xl w-full mx-auto flex-1 flex flex-col lg:flex-row gap-lg animate-fade-in">
+          {/* Main List */}
+          <section className="flex-1 bg-white rounded-xl border border-outline-variant custom-shadow flex flex-col overflow-hidden">
+=======
         {/* ── Main table panel ── */}
         <section className="flex-1 card flex flex-col overflow-hidden">
 
@@ -121,6 +129,7 @@ const Vendors = () => {
               </button>
             ))}
           </div>
+>>>>>>> f5f168f131295355d059a023d5db22fba0abdab1
 
           {/* Toolbar */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4 bg-slate-50/60 border-b border-slate-100">

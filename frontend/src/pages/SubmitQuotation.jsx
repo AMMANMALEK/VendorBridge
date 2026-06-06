@@ -20,9 +20,9 @@ const DeadlineCountdown = ({ deadline }) => {
 const ReadOnlyView = ({ quotations }) => (
   <div className="flex min-h-screen bg-[#F7F9FC]">
     <Sidebar />
-    <div className="flex-1 ml-sidebar_width pt-header_height min-h-screen flex flex-col">
+    <div className="flex-1 ml-[240px] pt-14 min-h-screen flex flex-col">
       <Header title="Submitted Quotations" />
-      <main className="p-xl max-w-container_max_width w-full mx-auto flex-1 animate-fade-in">
+      <main className="p-xl max-w-7xl w-full mx-auto flex-1 animate-fade-in">
         <div className="bg-amber-50 border border-amber-200 text-amber-800 px-lg py-sm rounded-lg text-[13px] font-medium mb-lg flex items-center gap-sm">
           <span className="material-symbols-outlined text-[18px]">visibility</span>
           View-only — quotation submission is exclusive to vendors.
@@ -82,14 +82,11 @@ const SubmitQuotation = () => {
   const vendorProfile = vendors.find(v => v.contact === user?.email);
   const vendorId = vendorProfile?.id || 'VND-EXT';
 
-  // RFQs this vendor is assigned to (open ones assigned to them, or all open if not using assignment)
+  // RFQs this vendor is explicitly assigned to by the Procurement Officer
   const myRFQs = rfqs.filter(r =>
     r.status === 'Open' &&
-    (
-      !r.assignedVendors ||
-      r.assignedVendors.length === 0 ||
-      r.assignedVendors.some(av => av.id === vendorId || av.name === vendorName)
-    )
+    Array.isArray(r.assignedVendors) &&
+    r.assignedVendors.some(av => av.id === vendorId || av.name === vendorName)
   );
 
   // My submitted/draft quotations
@@ -206,10 +203,10 @@ const SubmitQuotation = () => {
   return (
     <div className="flex min-h-screen bg-[#F7F9FC]">
       <Sidebar />
-      <div className="flex-1 ml-sidebar_width pt-header_height min-h-screen flex flex-col">
+      <div className="flex-1 ml-[240px] pt-14 min-h-screen flex flex-col">
         <Header title="Submit Quotation" />
 
-        <main className="p-xl max-w-container_max_width w-full mx-auto flex-1 flex flex-col lg:flex-row gap-lg animate-fade-in">
+        <main className="p-xl max-w-7xl w-full mx-auto flex-1 flex flex-col lg:flex-row gap-lg animate-fade-in">
 
           {/* ── Left: RFQ invitation list ── */}
           <div className="w-full lg:w-[300px] flex flex-col gap-sm flex-shrink-0">
@@ -225,7 +222,7 @@ const SubmitQuotation = () => {
 
             <div className="flex items-center justify-between px-xs">
               <p className="text-[12px] font-semibold text-on-surface-variant uppercase tracking-wider">
-                RFQ Invitations ({myRFQs.length})
+                RFQ Invitations
               </p>
             </div>
 

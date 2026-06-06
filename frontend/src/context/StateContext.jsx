@@ -2,6 +2,70 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const StateContext = createContext();
 
+<<<<<<< HEAD
+// ─── Hardcoded Users ───────────────────────────────────────────────────────────
+// 4 internal staff + 3 vendor accounts (one per existing company with a login)
+const SEED_USERS = [
+  {
+    id: 'USR-001',
+    name: 'Arjun Kapoor',
+    email: 'admin@vendorbridge.com',
+    password: 'Admin@123',
+    role: 'admin',
+    roleLabel: 'Administrator',
+    symbol: '👑',
+    company: 'VendorBridge Corp'
+  },
+  {
+    id: 'USR-002',
+    name: 'Rahul Sharma',
+    email: 'officer@vendorbridge.com',
+    password: 'Officer@123',
+    role: 'officer',
+    roleLabel: 'Procurement Officer',
+    symbol: '📋',
+    company: 'VendorBridge Corp'
+  },
+  {
+    id: 'USR-003',
+    name: 'Priya Mehta',
+    email: 'manager@vendorbridge.com',
+    password: 'Manager@123',
+    role: 'manager',
+    roleLabel: 'Manager / Approver',
+    symbol: '✅',
+    company: 'VendorBridge Corp'
+  },
+  {
+    id: 'USR-004',
+    name: 'Infra Supplies Pvt Ltd',
+    email: 'vendor@infrasupp.com',
+    password: 'Vendor@123',
+    role: 'vendor',
+    roleLabel: 'Vendor',
+    symbol: '🏭',
+    company: 'Infra Supplies Pvt Ltd'
+  },
+  {
+    id: 'USR-005',
+    name: 'Global Tech Solutions',
+    email: 'vendor@globaltech.com',
+    password: 'Global@123',
+    role: 'vendor',
+    roleLabel: 'Vendor',
+    symbol: '🏭',
+    company: 'Global Tech Solutions'
+  },
+  {
+    id: 'USR-006',
+    name: 'Aura Logistics',
+    email: 'vendor@auralogistics.in',
+    password: 'Aura@1234',
+    role: 'vendor',
+    roleLabel: 'Vendor',
+    symbol: '🏭',
+    company: 'Aura Logistics'
+=======
 const apiBase = import.meta.env.VITE_API_BASE || 'http://localhost:5000/api/v1';
 
 const defaultVendors = [];
@@ -28,10 +92,58 @@ async function apiFetch(path, token, options = {}) {
   if (!res.ok) {
     const errorBody = await res.json().catch(() => null);
     throw new Error(errorBody?.message || res.statusText || 'API request failed');
+>>>>>>> f5f168f131295355d059a023d5db22fba0abdab1
   }
   return res.status === 204 ? null : res.json();
 }
 
+<<<<<<< HEAD
+// ─── Default Data ──────────────────────────────────────────────────────────────
+const defaultVendors = [
+  { id: "VND-001", name: "Global Tech Solutions",  contact: "vendor@globaltech.com",    category: "IT Hardware",      status: "Active", rating: "4.8", address: "Mumbai, MH",    totalOrders: 0, totalSpent: 0 },
+  { id: "VND-002", name: "Aura Logistics",          contact: "vendor@auralogistics.in",  category: "Logistics",        status: "Active", rating: "4.5", address: "Pune, MH",      totalOrders: 0, totalSpent: 0 },
+  { id: "VND-003", name: "Swift Supplies Ltd",      contact: "sales@swiftsupplies.com",  category: "Office Supplies",  status: "Active", rating: "4.2", address: "Delhi, NCR",    totalOrders: 0, totalSpent: 0 },
+  { id: "VND-004", name: "Deepak Industries",       contact: "deepak@deepakind.com",     category: "Industrial Parts", status: "Active", rating: "4.9", address: "Ahmedabad, GJ", totalOrders: 0, totalSpent: 0 },
+  { id: "VND-005", name: "Infra Supplies Pvt Ltd",  contact: "vendor@infrasupp.com",     category: "Industrial Parts", status: "Active", rating: "4.6", address: "Chennai, TN",   totalOrders: 0, totalSpent: 0 }
+];
+
+const defaultRFQs = [
+  { id: "RFQ-2026-001", title: "Enterprise Laptops (20 units)",   category: "IT Hardware",    createdDate: "2026-05-15", deadline: "2026-06-30", status: "Open", description: "Requirement of high performance Core i7, 16GB RAM laptops with 3 years warranty." },
+  { id: "RFQ-2026-002", title: "West Zone Freight Distribution",  category: "Logistics",      createdDate: "2026-06-01", deadline: "2026-06-30", status: "Open", description: "Monthly logistics and freight distribution services for West zone warehouses." },
+  { id: "RFQ-2026-003", title: "Bulk Stationary Supplies",        category: "Office Supplies", createdDate: "2026-06-04", deadline: "2026-06-30", status: "Open", description: "Annual stationary supply contract for corporate offices." }
+];
+
+const defaultQuotations = [];
+
+const defaultPOs = [];
+
+const defaultInvoices = [];
+
+const defaultApprovals = [];
+
+const defaultLogs = [
+  { id: "LOG-001", user: "Rahul Sharma", action: "Created RFQ-2026-001 Enterprise Laptops (20 units)", category: "RFQ", timestamp: "2026-05-15T09:00:00Z" },
+  { id: "LOG-002", user: "Rahul Sharma", action: "Created RFQ-2026-002 West Zone Freight Distribution", category: "RFQ", timestamp: "2026-06-01T10:00:00Z" },
+  { id: "LOG-003", user: "Rahul Sharma", action: "Created RFQ-2026-003 Bulk Stationary Supplies",       category: "RFQ", timestamp: "2026-06-04T10:15:30Z" }
+];
+
+const SEED_VERSION = 'v5';
+// Run migration at module load time — before any useState initializer fires
+if (localStorage.getItem('vb_seed_version') !== SEED_VERSION) {
+  localStorage.removeItem('vb_registered_users');
+  localStorage.removeItem('vb_vendors');
+  localStorage.removeItem('vb_rfqs');
+  localStorage.removeItem('vb_quotations');
+  localStorage.removeItem('vb_pos');
+  localStorage.removeItem('vb_invoices');
+  localStorage.removeItem('vb_approvals');
+  localStorage.removeItem('vb_logs');
+  localStorage.removeItem('vb_user');
+  localStorage.setItem('vb_seed_version', SEED_VERSION);
+}
+
+// ─── Provider ──────────────────────────────────────────────────────────────────
+=======
 function formatDate(dateString) {
   if (!dateString) return '';
   const date = new Date(dateString);
@@ -180,6 +292,7 @@ function normalizeResponse(data, normalizer) {
   return Array.isArray(data) ? data.map(normalizer).filter(Boolean) : [];
 }
 
+>>>>>>> f5f168f131295355d059a023d5db22fba0abdab1
 export const StateProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
     try {
@@ -368,6 +481,86 @@ export const StateProvider = ({ children }) => {
     return normalized;
   };
 
+<<<<<<< HEAD
+  const rejectApproval = (approvalId, remark = '') => {
+    // Capture current snapshot for lookups (state updates are async)
+    let targetApproval;
+    setApprovals(prev => prev.map(a => {
+      if (a.id === approvalId) {
+        targetApproval = a;
+        return { ...a, status: 'Rejected', remark, decidedBy: user?.name, decidedAt: new Date().toISOString() };
+      }
+      return a;
+    }));
+    if (!targetApproval) return;
+    addLog(`Rejected ${targetApproval.type}: ${targetApproval.title}${remark ? ` — Reason: "${remark}"` : ''}`, 'Approvals');
+
+    if (targetApproval.type === 'Quotation Approval') {
+      // sourceId is the quotation id
+      const quoteId = targetApproval.sourceId;
+      // Reset the rejected quote back to Pending so officer can re-select
+      setQuotations(prev => prev.map(q =>
+        q.id === quoteId ? { ...q, status: 'Pending' } : q
+      ));
+      // Find rfqId from current quotations state
+      const quote = quotations.find(q => q.id === quoteId);
+      if (quote) {
+        const rejectionNotice = {
+          reason: remark,
+          rejectedBy: user?.name,
+          rejectedAt: new Date().toISOString(),
+          approvalId,
+          rfqId: quote.rfqId
+        };
+        setRfqs(prev => prev.map(r =>
+          r.id === quote.rfqId ? { ...r, rejectionNotice } : r
+        ));
+        addLog(`RFQ ${quote.rfqId} returned to Officer for vendor re-selection`, 'RFQ');
+      }
+    } else if (targetApproval.type === 'Purchase Order') {
+      // sourceId is the PO id
+      const poId = targetApproval.sourceId;
+      setPos(prev => prev.map(p => p.id === poId ? { ...p, status: 'Rejected' } : p));
+
+      // Find the PO to get its associated quotation
+      const po = pos.find(p => p.id === poId);
+      if (po) {
+        // Find the approved quotation that generated this PO — match by vendorName + rfqTitle heuristic
+        // or check any quote that is 'Approved' and belongs to the same vendor
+        const relatedQuote = quotations.find(q =>
+          q.vendorName === po.vendorName && (q.status === 'Approved' || q.status === 'Pending')
+        );
+        if (relatedQuote) {
+          // Reset quote so officer can re-select from comparison
+          setQuotations(prev => prev.map(q =>
+            q.id === relatedQuote.id ? { ...q, status: 'Pending' } : q
+          ));
+          const rejectionNotice = {
+            reason: remark,
+            rejectedBy: user?.name,
+            rejectedAt: new Date().toISOString(),
+            approvalId,
+            rfqId: relatedQuote.rfqId,
+            poRejection: true
+          };
+          setRfqs(prev => prev.map(r =>
+            r.id === relatedQuote.rfqId ? { ...r, rejectionNotice } : r
+          ));
+          addLog(`RFQ ${relatedQuote.rfqId} returned to Officer after PO rejection`, 'RFQ');
+        }
+      }
+    }
+  };
+
+  const clearRejectionNotice = (rfqId) => {
+    setRfqs(prev => prev.map(r => r.id === rfqId ? { ...r, rejectionNotice: null } : r));
+  };
+
+  const payInvoice = (invoiceId) => {
+    setInvoices(prev => prev.map(i => i.id === invoiceId ? { ...i, status: 'Paid' } : i));
+    const inv = invoices.find(i => i.id === invoiceId);
+    if (inv) addLog(`Paid Invoice ${invoiceId} of amount ₹${inv.amount}`, 'Invoice');
+=======
   const generateInvoice = async (poId) => {
     const newInvoice = await apiFetch(`/invoices/generate/${poId}`, token, { method: 'POST' });
     const normalized = normalizeInvoice(newInvoice);
@@ -382,6 +575,7 @@ export const StateProvider = ({ children }) => {
     setQuotations(prev => [normalized, ...prev]);
     addLog(`Submitted quotation for RFQ: ${normalized.rfqId}`, 'Quotation');
     return normalized;
+>>>>>>> f5f168f131295355d059a023d5db22fba0abdab1
   };
 
   const approveQuotation = async (approvalId) => {
@@ -438,6 +632,19 @@ export const StateProvider = ({ children }) => {
     return updated;
   };
 
+<<<<<<< HEAD
+  // Derived: RFQs that need officer re-action after a rejection
+  const rejectedRFQs = rfqs.filter(r => r.rejectionNotice);
+
+  return (
+    <StateContext.Provider value={{
+      user, registeredUsers, vendors, rfqs, quotations, pos, invoices, approvals, logs,
+      rejectedRFQs,
+      login, logout, registerVendor, registerCompany,
+      addVendor, updateVendorStatus, addRFQ, generateInvoice, addQuotation,
+      approveQuotation, approveApproval, rejectApproval, clearRejectionNotice, payInvoice,
+      updateUserRole, deactivateUser, resetUserPassword
+=======
   const dismissReturnNotif = (notifId) => {
     setDismissedNotifIds(prev => [...prev, notifId]);
   };
@@ -542,6 +749,7 @@ export const StateProvider = ({ children }) => {
       updateUserRole,
       deactivateUser,
       resetUserPassword
+>>>>>>> f5f168f131295355d059a023d5db22fba0abdab1
     }}>
       {children}
     </StateContext.Provider>

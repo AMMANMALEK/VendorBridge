@@ -82,8 +82,17 @@ const PurchaseOrders = () => {
   };
 
   return (
+<<<<<<< HEAD
+    <div className="flex min-h-screen bg-[#F7F9FC]">
+      <Sidebar />
+      <div className="flex-1 ml-[240px] pt-14 min-h-screen flex flex-col">
+        <Header title={activeTab === 'POs' ? 'Purchase Orders' : 'Invoices'} />
+
+        <main className="p-xl max-w-7xl w-full mx-auto flex-1 flex flex-col gap-lg animate-fade-in">
+=======
     <Layout title={activeTab === 'POs' ? 'Purchase Orders' : 'Invoices'}>
       <div className="max-w-[1400px] mx-auto space-y-5">
+>>>>>>> f5f168f131295355d059a023d5db22fba0abdab1
 
           {/* Tabs */}
           <div className="flex border-b border-outline-variant gap-lg">

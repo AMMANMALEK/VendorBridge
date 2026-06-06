@@ -83,8 +83,18 @@ const AdminUserManagement = () => {
   }, {});
 
   return (
+<<<<<<< HEAD
+    <div className="flex min-h-screen bg-[#F7F9FC]">
+      <Sidebar />
+
+      <div className="flex-1 ml-[240px] pt-14 min-h-screen flex flex-col">
+        <Header title="User Management" />
+
+        <main className="p-xl max-w-7xl w-full mx-auto flex-1 flex flex-col gap-lg animate-fade-in">
+=======
     <Layout title="User Management">
       <div className="max-w-[1400px] mx-auto space-y-5">
+>>>>>>> f5f168f131295355d059a023d5db22fba0abdab1
 
           {/* Stats row */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

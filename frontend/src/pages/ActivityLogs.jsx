@@ -52,8 +52,18 @@ const ActivityLogs = () => {
   };
 
   return (
+<<<<<<< HEAD
+    <div className="flex min-h-screen bg-[#F7F9FC]">
+      <Sidebar />
+      
+      <div className="flex-1 ml-[240px] pt-14 min-h-screen flex flex-col">
+        <Header title="System Activity & Audit Logs" />
+
+        <main className="p-xl max-w-7xl w-full mx-auto flex-1 flex flex-col gap-lg animate-fade-in">
+=======
     <Layout title="Activity & Audit Logs">
         <div className="max-w-[1400px] mx-auto flex-1 flex flex-col gap-5">
+>>>>>>> f5f168f131295355d059a023d5db22fba0abdab1
           <section className="bg-white rounded-xl border border-outline-variant custom-shadow flex flex-col overflow-hidden">
             {/* Filter toolbar */}
             <div className="p-lg border-b border-outline-variant flex flex-col md:flex-row md:items-center justify-between gap-md bg-surface-container-lowest">

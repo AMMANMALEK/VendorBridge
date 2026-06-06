@@ -151,6 +151,24 @@ const ApprovalWorkflow = () => {
   };
 
   return (
+<<<<<<< HEAD
+    <div className="flex min-h-screen bg-[#F7F9FC]">
+      <Sidebar />
+      <div className="flex-1 ml-[240px] pt-14 min-h-screen flex flex-col">
+        <Header title="Approval Workflow" />
+
+        <main className="p-xl max-w-7xl w-full mx-auto flex-1 flex flex-col gap-lg animate-fade-in">
+
+          {/* Manager context banner */}
+          {isManager && (
+            <div className="bg-green-50 border border-green-200 rounded-xl px-lg py-md flex items-center justify-between">
+              <div className="flex items-center gap-sm">
+                <span className="text-2xl">✅</span>
+                <div>
+                  <p className="font-semibold text-[14px] text-green-800">Manager Approval Workspace</p>
+                  <p className="text-[12px] text-green-700">Review procurement requests, check details, then approve or reject with a remark.</p>
+                </div>
+=======
     <Layout title="Approval Workflow">
       <div className="max-w-[1400px] mx-auto space-y-5">
 
@@ -164,6 +182,7 @@ const ApprovalWorkflow = () => {
               <div>
                 <p className="font-bold text-[14px] text-emerald-800">Manager Approval Workspace</p>
                 <p className="text-[12px] text-emerald-700">Approving creates a PO. Rejecting returns the request to the Officer with your reason.</p>
+>>>>>>> f5f168f131295355d059a023d5db22fba0abdab1
               </div>
             </div>
             {pendingCount > 0 && (

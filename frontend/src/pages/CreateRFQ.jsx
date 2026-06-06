@@ -23,6 +23,47 @@ const AdminRFQView = ({ rfqs }) => {
   };
 
   return (
+<<<<<<< HEAD
+    <div className="flex min-h-screen bg-[#F7F9FC]">
+      <Sidebar />
+      <div className="flex-1 ml-[240px] pt-14 min-h-screen flex flex-col">
+        <Header title="All RFQs" />
+        <main className="p-xl max-w-7xl w-full mx-auto flex-1 animate-fade-in">
+          <div className="bg-purple-50 border border-purple-200 text-purple-800 px-lg py-sm rounded-lg text-[13px] font-medium mb-lg flex items-center gap-sm">
+            <span className="material-symbols-outlined text-[18px]">visibility</span>
+            Admin view — all RFQs across the organization. Only Procurement Officers can create RFQs.
+          </div>
+          <div className="bg-white rounded-xl border border-outline-variant custom-shadow overflow-hidden">
+            <table className="w-full text-left">
+              <thead className="bg-surface-container-low border-b border-outline-variant">
+                <tr>
+                  <th className="px-lg py-sm text-on-surface-variant text-[12px] uppercase font-semibold">RFQ ID</th>
+                  <th className="px-lg py-sm text-on-surface-variant text-[12px] uppercase font-semibold">Title</th>
+                  <th className="px-lg py-sm text-on-surface-variant text-[12px] uppercase font-semibold">Category</th>
+                  <th className="px-lg py-sm text-on-surface-variant text-[12px] uppercase font-semibold">Deadline</th>
+                  <th className="px-lg py-sm text-on-surface-variant text-[12px] uppercase font-semibold">Vendors</th>
+                  <th className="px-lg py-sm text-on-surface-variant text-[12px] uppercase font-semibold">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-outline-variant">
+                {rfqs.length === 0
+                  ? <tr><td colSpan="6" className="text-center py-xl text-on-surface-variant">No RFQs yet.</td></tr>
+                  : rfqs.map(r => (
+                    <tr key={r.id} className="hover:bg-surface-container-low transition-colors">
+                      <td className="px-lg py-md font-label-md text-[13px]">{r.id}</td>
+                      <td className="px-lg py-md font-semibold text-[14px]">{r.title}</td>
+                      <td className="px-lg py-md text-[14px]">{r.category}</td>
+                      <td className="px-lg py-md text-[14px]">{r.deadline}</td>
+                      <td className="px-lg py-md text-[14px]">{(r.assignedVendors || []).length} assigned</td>
+                      <td className="px-lg py-md">{statusBadge(r.status)}</td>
+                    </tr>
+                  ))
+                }
+              </tbody>
+            </table>
+          </div>
+        </main>
+=======
     <Layout title="All RFQs">
       <div className="max-w-[1400px] mx-auto space-y-4">
         <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-purple-50 border border-purple-200 text-purple-800 text-[13px] font-medium">
@@ -58,6 +99,7 @@ const AdminRFQView = ({ rfqs }) => {
             </tbody>
           </table>
         </div>
+>>>>>>> f5f168f131295355d059a023d5db22fba0abdab1
       </div>
     </Layout>
   );
@@ -120,8 +162,17 @@ const CreateRFQ = () => {
   };
 
   return (
+<<<<<<< HEAD
+    <div className="flex min-h-screen bg-[#F7F9FC]">
+      <Sidebar />
+      <div className="flex-1 ml-[240px] pt-14 min-h-screen flex flex-col">
+        <Header title="Create Request for Quotation" />
+
+        <main className="p-xl max-w-7xl w-full mx-auto flex-1 animate-fade-in space-y-lg pb-xl">
+=======
     <Layout title="Create Request for Quotation">
       <div className="max-w-[1400px] mx-auto space-y-5 pb-10">
+>>>>>>> f5f168f131295355d059a023d5db22fba0abdab1
 
           {/* ── Section 1: RFQ Details ── */}
           <div className="card p-6 space-y-4">

@@ -3,10 +3,19 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAppState } from '../context/StateContext';
 
 const DEMO_ACCOUNTS = [
+<<<<<<< HEAD
+  { role: 'Admin',               symbol: '👑', email: 'admin@vendorbridge.com',    password: 'Admin@123',   color: 'border-purple-400 bg-purple-50' },
+  { role: 'Procurement Officer', symbol: '📋', email: 'officer@vendorbridge.com',  password: 'Officer@123', color: 'border-blue-400 bg-blue-50' },
+  { role: 'Manager / Approver',  symbol: '✅', email: 'manager@vendorbridge.com',  password: 'Manager@123', color: 'border-green-400 bg-green-50' },
+  { role: 'Vendor — Infra Supplies',   symbol: '🏭', email: 'vendor@infrasupp.com',      password: 'Vendor@123',  color: 'border-orange-400 bg-orange-50' },
+  { role: 'Vendor — Global Tech',      symbol: '🏭', email: 'vendor@globaltech.com',     password: 'Global@123',  color: 'border-orange-400 bg-orange-50' },
+  { role: 'Vendor — Aura Logistics',   symbol: '🏭', email: 'vendor@auralogistics.in',   password: 'Aura@1234',   color: 'border-orange-400 bg-orange-50' },
+=======
   { role: 'Administrator',       email: 'admin@vendorbridge.com',   password: 'password123',   icon: 'shield_person', color: '#7C3AED', bg: '#EDE9FE' },
   { role: 'Procurement Officer', email: 'officer@vendorbridge.com', password: 'password123', icon: 'badge',         color: '#2563EB', bg: '#DBEAFE' },
   { role: 'Manager / Approver',  email: 'manager@vendorbridge.com', password: 'password123', icon: 'verified_user', color: '#059669', bg: '#D1FAE5' },
   { role: 'Vendor Partner',      email: 'vendor@vendorbridge.com',  password: 'password123',  icon: 'business',      color: '#B45309', bg: '#FEF3C7' },
+>>>>>>> f5f168f131295355d059a023d5db22fba0abdab1
 ];
 
 const FEATURES = [
@@ -114,6 +123,13 @@ export default function Login() {
           </div>
         </div>
 
+<<<<<<< HEAD
+        {/* Footer */}
+        <div className="relative z-10 text-white/50 font-body-sm text-[12px]">
+          © 2026 VendorBridge Enterprise
+        </div>
+      </section>
+=======
         {/* Hero — fills remaining space */}
         <div style={{ flex:1, position:'relative', zIndex:2, display:'flex', flexDirection:'column', justifyContent:'center', gap:0 }}>
           {/* Pill */}
@@ -180,6 +196,7 @@ export default function Login() {
 
         <div style={{ position:'relative', zIndex:2, color:'rgba(255,255,255,.18)', fontSize:11, marginTop:16, flexShrink:0 }}>© 2026 VendorBridge Enterprise</div>
       </div>
+>>>>>>> f5f168f131295355d059a023d5db22fba0abdab1
 
       {/* ══════════════ RIGHT FORM PANEL ══════════════ */}
       <div style={{ flex:1, display:'flex', flexDirection:'column', background:'#fff', overflow:'hidden' }}>
@@ -202,6 +219,18 @@ export default function Login() {
         <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:'0 36px' }}>
           <div style={{ width:'100%', maxWidth:400 }}>
 
+<<<<<<< HEAD
+          <form className="space-y-lg animate-fade-in" onSubmit={handleSubmit}>
+            <div className="space-y-xs">
+              <label className="font-label-md text-on-surface-variant block uppercase tracking-wider text-[11px]" htmlFor="email">Email Address</label>
+              <div className="relative group">
+                <span className="material-symbols-outlined absolute left-md top-1/2 -translate-y-1/2 text-outline-variant group-focus-within:text-primary transition-colors">mail</span>
+                <input
+                  className="w-full h-10 pl-[44px] pr-md bg-white border border-outline-variant rounded-lg font-body-md focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-[14px]"
+                  id="email" name="email" placeholder="john.doe@enterprise.com"
+                  required type="email" value={email}
+                  onChange={(e) => { setEmail(e.target.value); setError(''); }}
+=======
             {/* Heading */}
             <div style={{ marginBottom:28 }}>
               <div style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'4px 12px', borderRadius:100, background:'#EEF2FF', border:'1px solid #C7D2FE', marginBottom:14 }}>
@@ -220,6 +249,7 @@ export default function Login() {
                   icon="mail" type="email" placeholder="you@company.com"
                   value={email}
                   onChange={e => { setEmail(e.target.value); setError(''); }}
+>>>>>>> f5f168f131295355d059a023d5db22fba0abdab1
                 />
               </div>
 

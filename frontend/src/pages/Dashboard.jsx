@@ -42,7 +42,7 @@ const KPICard = ({ label, value, sub, subColor = '#6366F1', icon, iconBg, iconCo
 );
 
 const Dashboard = () => {
-  const { rfqs, approvals, pos, invoices, vendors, registeredUsers, user } = useAppState();
+  const { rfqs, approvals, pos, invoices, vendors, registeredUsers, user, rejectedRFQs } = useAppState();
   const navigate = useNavigate();
 
   const role = user?.role || 'officer';
@@ -79,6 +79,25 @@ const Dashboard = () => {
   ];
 
   return (
+<<<<<<< HEAD
+    <div className="flex min-h-screen bg-[#F7F9FC]">
+      <Sidebar />
+      
+      <div className="flex-1 ml-[240px] pt-14 min-h-screen flex flex-col">
+        <Header title="Dashboard" />
+
+        <main className="p-xl max-w-7xl w-full mx-auto flex-1 animate-fade-in">
+          {/* Welcome Header */}
+          <div className="mb-xl">
+            <div className="flex items-center gap-sm mb-xs">
+              <h2 className="font-h1 text-h1 text-on-surface font-bold text-[28px]">Welcome back, {user ? user.name.split(' ')[0] : 'User'} {user?.symbol}</h2>
+            </div>
+            <p className="text-on-surface-variant font-body-md text-[14px]">
+              {role === 'admin' && 'Full organization overview — all users, RFQs, approvals, and spend.'}
+              {role === 'officer' && "Here's what's happening in your procurement pipeline today."}
+              {role === 'manager' && 'Approvals dashboard — review and sign off on pending procurement requests.'}
+            </p>
+=======
     <Layout title="Dashboard">
       <div className="max-w-[1400px] mx-auto space-y-5">
 
@@ -89,6 +108,7 @@ const Dashboard = () => {
               {greeting()}, {user?.name?.split(' ')[0] || 'User'}
             </h2>
             <p className="text-slate-500 text-[14px] mt-1">{ROLE_DESCS[role]}</p>
+>>>>>>> f5f168f131295355d059a023d5db22fba0abdab1
           </div>
           <p className="text-[13px] text-slate-400 whitespace-nowrap hidden md:block">{new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
         </div>
@@ -206,12 +226,51 @@ const Dashboard = () => {
             </div>
           </div>
 
+<<<<<<< HEAD
+          {/* Officer: Rejection alerts */}
+          {role === 'officer' && rejectedRFQs.length > 0 && (
+            <div className="bg-red-50 border-2 border-error/30 rounded-xl p-lg mb-xl space-y-sm">
+              <div className="flex items-center gap-sm mb-xs">
+                <span className="material-symbols-outlined text-error">cancel</span>
+                <h3 className="font-semibold text-[15px] text-error">
+                  {rejectedRFQs.length} Request{rejectedRFQs.length > 1 ? 's' : ''} Rejected — Action Required
+                </h3>
+              </div>
+              {rejectedRFQs.map(rfq => (
+                <div key={rfq.id}
+                  className="bg-white border border-error/20 rounded-lg p-md cursor-pointer hover:border-error/40 transition-colors"
+                  onClick={() => navigate('/quotation-comparison', { state: { rfqId: rfq.id } })}>
+                  <div className="flex items-start justify-between gap-md">
+                    <div>
+                      <p className="font-semibold text-[14px]">{rfq.title}</p>
+                      <p className="text-[12px] text-on-surface-variant mt-xs">
+                        Rejected by {rfq.rejectionNotice.rejectedBy}
+                      </p>
+                      <p className="text-[13px] text-error italic mt-xs">
+                        "{rfq.rejectionNotice.reason}"
+                      </p>
+                    </div>
+                    <span className="text-primary text-[12px] font-semibold whitespace-nowrap">Re-select →</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Admin: Notifications + pending vendor alerts */}
+          {role === 'admin' && (pendingVendors.length > 0 || overdueInvoicesCount > 0 || pendingApprovalsCount > 0) && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-lg mb-xl space-y-sm">
+              <div className="flex items-center gap-sm mb-sm">
+                <span className="material-symbols-outlined text-amber-600">notifications_active</span>
+                <h3 className="font-semibold text-[15px] text-amber-800">System Alerts</h3>
+=======
           {/* Spending Trend */}
           <div className="lg:col-span-4 card p-5 flex flex-col">
             <div className="flex items-center justify-between mb-5">
               <div>
                 <h3 className="font-bold text-slate-800 text-[15px]">Spending Trend</h3>
                 <p className="text-slate-400 text-[12px] mt-0.5">Last 6 months</p>
+>>>>>>> f5f168f131295355d059a023d5db22fba0abdab1
               </div>
               <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-100">
                 <span className="w-2 h-2 rounded-full bg-indigo-500" />
