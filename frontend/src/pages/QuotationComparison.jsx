@@ -10,7 +10,7 @@ const QuotationComparison = () => {
   const canAct = role === 'officer';
 
   const rfqsWithQuotes = rfqs.filter(r =>
-    quotations.some(q => q.rfqId === r.id) || r.status === 'Open'
+    quotations.some(q => q.rfqId === r.id)
   );
 
   const [selectedRFQId,  setSelectedRFQId]  = useState(rfqsWithQuotes[0]?.id || '');
@@ -95,9 +95,13 @@ const QuotationComparison = () => {
                 value={selectedRFQId}
                 onChange={e => setSelectedRFQId(e.target.value)}
               >
-                {rfqsWithQuotes.map(r => (
-                  <option key={r.id} value={r.id}>[{r.id}] {r.title}</option>
-                ))}
+                {rfqsWithQuotes.length === 0 ? (
+                  <option value="">No RFQs with submitted quotations yet</option>
+                ) : (
+                  rfqsWithQuotes.map(r => (
+                    <option key={r.id} value={r.id}>[{r.id}] {r.title}</option>
+                  ))
+                )}
               </select>
               <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" style={{ fontSize: 18 }}>expand_more</span>
             </div>

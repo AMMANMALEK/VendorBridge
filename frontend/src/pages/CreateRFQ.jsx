@@ -110,8 +110,8 @@ const CreateRFQ = () => {
       alert('RFQ saved as draft. Vendors have not been notified.');
       navigate('/dashboard');
     } else {
-      alert(`RFQ published and sent to ${assignedVendors.length} vendor(s)!`);
-      navigate('/quotation-comparison');
+      alert(`RFQ published and sent to ${assignedVendors.length} vendor(s)! Awaiting vendor bids/quotations.`);
+      navigate('/dashboard');
     }
   };
 
