@@ -22,6 +22,24 @@ export const getInvoiceById = async (req: AuthRequest, res: Response, next: Next
   }
 };
 
+export const getInvoices = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const invoices = await invoicesService.findAll(req.query as any);
+    res.json(invoices);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const payInvoice = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const invoice = await invoicesService.pay(req.params.id as string, req.user!.id);
+    res.json(invoice);
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getInvoicePDF = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const pdf = await invoicesService.getPDF(req.params.id as string);

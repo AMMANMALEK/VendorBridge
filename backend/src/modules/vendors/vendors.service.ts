@@ -37,6 +37,16 @@ export class VendorsService {
 
   async update(id: string, data: any) {
     const vendor = await prisma.vendor.update({ where: { id }, data });
+
+    // If vendor status is updated, automatically update the user account activation status
+    if (data.status && vendor.userId) {
+      const isStatusActive = String(data.status).toLowerCase() === 'active';
+      await prisma.user.update({
+        where: { id: vendor.userId },
+        data: { isActive: isStatusActive }
+      });
+    }
+
     await prisma.activity.create({
       data: {
         type: 'VENDOR',

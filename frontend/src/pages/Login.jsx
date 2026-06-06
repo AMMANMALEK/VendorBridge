@@ -1,12 +1,12 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAppState } from '../context/StateContext';
 
 const DEMO_ACCOUNTS = [
-  { role: 'Administrator',       email: 'admin@vendorbridge.com',   password: 'Admin@123',   icon: 'shield_person', color: '#7C3AED', bg: '#EDE9FE' },
-  { role: 'Procurement Officer', email: 'officer@vendorbridge.com', password: 'Officer@123', icon: 'badge',         color: '#2563EB', bg: '#DBEAFE' },
-  { role: 'Manager / Approver',  email: 'manager@vendorbridge.com', password: 'Manager@123', icon: 'verified_user', color: '#059669', bg: '#D1FAE5' },
-  { role: 'Vendor Partner',      email: 'vendor@infrasupp.com',     password: 'Vendor@123',  icon: 'business',      color: '#B45309', bg: '#FEF3C7' },
+  { role: 'Administrator',       email: 'admin@vendorbridge.com',   password: 'password123',   icon: 'shield_person', color: '#7C3AED', bg: '#EDE9FE' },
+  { role: 'Procurement Officer', email: 'officer@vendorbridge.com', password: 'password123', icon: 'badge',         color: '#2563EB', bg: '#DBEAFE' },
+  { role: 'Manager / Approver',  email: 'manager@vendorbridge.com', password: 'password123', icon: 'verified_user', color: '#059669', bg: '#D1FAE5' },
+  { role: 'Vendor Partner',      email: 'vendor@vendorbridge.com',  password: 'password123',  icon: 'business',      color: '#B45309', bg: '#FEF3C7' },
 ];
 
 const FEATURES = [
@@ -68,10 +68,6 @@ export default function Login() {
   const [remember,    setRemember]    = useState(false);
   const [loading,     setLoading]     = useState(false);
   const [activeIdx,   setActiveIdx]   = useState(null);
-
-  useEffect(() => {
-    if (user) navigate(user.role === 'vendor' ? '/submit-quotation' : '/dashboard');
-  }, [user, navigate]);
 
   const handleSubmit = async e => {
     e.preventDefault();

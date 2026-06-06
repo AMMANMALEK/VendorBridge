@@ -8,7 +8,7 @@
  *         id: { type: string }
  *         name: { type: string }
  *         email: { type: string }
- *         role: { type: string, enum: [procurement_officer, vendor, manager, admin] }
+ *         role: { type: string, enum: [officer, vendor, manager, admin] }
  *         company: { type: string }
  *         phone: { type: string }
  *         isActive: { type: boolean }
@@ -145,7 +145,7 @@
  *               name: { type: string }
  *               email: { type: string }
  *               password: { type: string, minLength: 6 }
- *               role: { type: string, enum: [procurement_officer, vendor, manager, admin] }
+ *               role: { type: string, enum: [officer, vendor, manager, admin] }
  *               company: { type: string }
  *               phone: { type: string }
  *     responses:

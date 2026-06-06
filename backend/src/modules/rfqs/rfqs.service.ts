@@ -2,16 +2,36 @@ import prisma from '../../config/prisma';
 
 export class RFQsService {
   async create(data: any, userId: string) {
-    const { items, assignedVendors, ...rfqData } = data;
+    const { items, assignedVendors, isDraft, ...rfqData } = data;
+
+    const normalizedItems = Array.isArray(items)
+      ? items.map((item: any) => ({
+          productName: item.productName || item.name || 'Item',
+          description: item.description ?? item.spec ?? null,
+          quantity: Number(item.quantity) || 1,
+          unit: item.unit || 'NOS',
+          estimatedPrice: item.estimatedPrice ?? item.total ?? item.unitPrice ?? undefined
+        }))
+      : [];
+
+    const assignedVendorCreates = Array.isArray(assignedVendors)
+      ? assignedVendors
+          .map((vendor: any) => {
+            if (typeof vendor === 'string') return { vendorId: vendor };
+            const vendorId = vendor?.id || vendor?.vendorId;
+            return vendorId ? { vendorId } : null;
+          })
+          .filter(Boolean)
+      : [];
+
     const rfq = await prisma.rfq.create({
       data: {
         ...rfqData,
+        status: isDraft ? 'Draft' : 'Open',
         deadline: new Date(data.deadline),
         createdById: userId,
-        items: items ? { create: items } : undefined,
-        assignedVendors: assignedVendors ? {
-          create: assignedVendors.map((v: string) => ({ vendorId: v }))
-        } : undefined
+        items: normalizedItems.length > 0 ? { create: normalizedItems } : undefined,
+        assignedVendors: assignedVendorCreates.length > 0 ? { create: assignedVendorCreates } : undefined
       },
       include: { items: true, assignedVendors: true }
     });
@@ -60,7 +80,8 @@ export class RFQsService {
     const rfq = await prisma.rfq.update({ where: { id }, data });
     await prisma.activity.create({
       data: {
-        type: 'RFQ', action: 'UPDATED',
+        type: 'RFQ',
+        action: 'UPDATED',
         description: `RFQ "${rfq.title}" updated`,
         relatedId: id
       }

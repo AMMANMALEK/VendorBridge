@@ -6,6 +6,6 @@ const router = Router();
 
 router.get('/', protect, getPOs);
 router.get('/:id', protect, getPOById);
-router.post('/generate/:quotationId', protect, authorize('admin', 'procurement_officer'), generatePO);
+router.post('/generate/:quotationId', protect, authorize('admin', 'officer'), generatePO);
 
 export default router;
