@@ -72,11 +72,15 @@ export default function Login() {
   const handleSubmit = async e => {
     e.preventDefault();
     setError(''); setLoading(true);
-    await new Promise(r => setTimeout(r, 460));
-    const u = login(email.trim(), password);
-    setLoading(false);
-    if (!u) { setError('Invalid email or password. Please try again.'); return; }
-    navigate(u.role === 'vendor' ? '/submit-quotation' : '/dashboard');
+    try {
+      await new Promise(r => setTimeout(r, 460));
+      const u = await login(email.trim(), password, remember);
+      navigate(u.role === 'vendor' ? '/submit-quotation' : '/dashboard');
+    } catch (err) {
+      setError(err?.message || 'Invalid email or password. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const fill = (acc, i) => { setEmail(acc.email); setPassword(acc.password); setError(''); setActiveIdx(i); };

@@ -2,6 +2,7 @@ import prisma from '../../config/prisma';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { generateToken } from '../../utils/generateToken';
+import { Roles } from '../../constants';
 
 export class AuthService {
   async register(data: {
@@ -19,13 +20,14 @@ export class AuthService {
     if (existing) throw { statusCode: 400, message: 'Email already registered' };
     const salt = await bcrypt.genSalt(12);
     const hashedPassword = await bcrypt.hash(data.password, salt);
-    const isVendor = (data.role || 'officer') === 'vendor';
+    const role = data.role || Roles.OFFICER;
+    const isVendor = role === Roles.VENDOR;
     const user = await prisma.user.create({
       data: {
         name: data.name,
         email: data.email,
         password: hashedPassword,
-        role: data.role || 'officer',
+        role,
         company: data.company,
         phone: data.phone,
         isActive: isVendor ? false : true

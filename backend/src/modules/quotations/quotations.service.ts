@@ -1,13 +1,38 @@
 import prisma from '../../config/prisma';
+import { normalizeStatus, QuotationStatus, Roles, ApprovalStatus } from '../../constants';
+import { UserPayload } from '../../types';
+import { requireArray, requireFields, requirePositiveNumber } from '../../utils/validation';
 
 export class QuotationsService {
-  async submit(data: any, userId: string) {
-    const subtotal = Number(data.amount ?? data.subtotal ?? 0);
+  private async getVendorForUser(userId: string) {
+    const vendor = await prisma.vendor.findFirst({ where: { userId } });
+    if (!vendor) throw { statusCode: 403, message: 'No vendor profile is linked to this user' };
+    return vendor;
+  }
+
+  async submit(data: any, user: UserPayload) {
+    requireFields(data, ['rfqId']);
+    if (user.role !== Roles.VENDOR) requireFields(data, ['vendorId']);
+
+    const vendor = user.role === Roles.VENDOR
+      ? await this.getVendorForUser(user.id)
+      : await prisma.vendor.findUnique({ where: { id: data.vendorId } });
+
+    if (!vendor) throw { statusCode: 404, message: 'Vendor not found' };
+
+    if (user.role === Roles.VENDOR) {
+      const assignment = await prisma.rfqVendor.findUnique({
+        where: { rfqId_vendorId: { rfqId: data.rfqId, vendorId: vendor.id } }
+      });
+      if (!assignment) throw { statusCode: 403, message: 'Vendor is not assigned to this RFQ' };
+    }
+
+    const subtotal = requirePositiveNumber(data.amount ?? data.subtotal, 'subtotal');
     const gstRate = Number(data.gstRate ?? 0);
     const taxAmount = Number(data.gstAmount ?? data.taxAmount ?? Math.round(subtotal * gstRate / 100));
     const grandTotal = Number(data.grandTotal ?? subtotal + taxAmount);
     const deliveryTimeline = data.deliveryDays ? String(data.deliveryDays) : String(data.deliveryTimeline ?? '');
-    const status = data.isDraft ? 'Draft' : 'Pending';
+    const status = data.isDraft ? QuotationStatus.DRAFT : QuotationStatus.PENDING;
 
     const lineItems = Array.isArray(data.lineItems)
       ? data.lineItems
@@ -15,24 +40,26 @@ export class QuotationsService {
       ? data.items
       : [];
 
+    if (!data.isDraft) requireArray(lineItems, 'items');
+
     const itemsToCreate = lineItems.map((item: any) => ({
       productName: item.productName || item.name || 'Line Item',
-      quantity: Number(item.quantity) || 1,
-      unitPrice: Number(item.unitPrice ?? item.unit_price ?? item.price ?? 0),
+      quantity: requirePositiveNumber(item.quantity ?? 1, 'item.quantity'),
+      unitPrice: requirePositiveNumber(item.unitPrice ?? item.unit_price ?? item.price, 'item.unitPrice'),
       totalPrice: Number(item.total ?? item.totalPrice ?? ((Number(item.unitPrice) || 0) * (Number(item.quantity) || 1)))
     }));
 
     const quotation = await prisma.quotation.create({
       data: {
         rfqId: data.rfqId,
-        vendorId: data.vendorId,
+        vendorId: vendor.id,
         subtotal,
         taxAmount,
         grandTotal,
         deliveryTimeline,
         notes: data.notes,
         status,
-        submittedById: userId,
+        submittedById: user.id,
         items: itemsToCreate.length > 0 ? { create: itemsToCreate } : undefined
       },
       include: { items: true, vendor: true }
@@ -41,7 +68,7 @@ export class QuotationsService {
       data: {
         type: 'QUOTATION', action: 'SUBMITTED',
         description: `Quotation submitted for RFQ`,
-        userId, relatedId: quotation.id
+        userId: user.id, relatedId: quotation.id
       }
     });
 
@@ -51,7 +78,7 @@ export class QuotationsService {
           quotationId: quotation.id,
           rfqId: quotation.rfqId,
           vendorId: quotation.vendorId,
-          status: 'pending',
+          status: ApprovalStatus.PENDING,
           remarks: 'Awaiting approval'
         }
       });
@@ -71,19 +98,28 @@ export class QuotationsService {
     return quotation;
   }
 
-  async update(id: string, data: any) {
-    const status = data.status || 'revised';
+  async update(id: string, data: any, user: UserPayload) {
+    const existing = await prisma.quotation.findUnique({ where: { id }, include: { vendor: true } });
+    if (!existing) throw { statusCode: 404, message: 'Quotation not found' };
+    if (user.role === Roles.VENDOR && existing.vendor.userId !== user.id) {
+      throw { statusCode: 403, message: 'Not authorized to update this quotation' };
+    }
+    if (user.role === Roles.VENDOR && [QuotationStatus.APPROVED, QuotationStatus.REJECTED].includes(existing.status as any)) {
+      throw { statusCode: 400, message: 'Approved or rejected quotations cannot be edited by vendor' };
+    }
+
+    const status = normalizeStatus(data.status) || QuotationStatus.REVISED;
     const quotation = await prisma.quotation.update({
       where: { id },
-      data: { ...data, status }
+      data: { ...data, vendorId: existing.vendorId, submittedById: existing.submittedById, status }
     });
 
-    if (status === 'Pending') {
+    if (status === QuotationStatus.PENDING) {
       const existingApproval = await prisma.approval.findFirst({ where: { quotationId: id } });
       if (existingApproval) {
         await prisma.approval.update({
           where: { id: existingApproval.id },
-          data: { status: 'pending', remarks: 'Resubmitted for approval' }
+          data: { status: ApprovalStatus.PENDING, remarks: 'Resubmitted for approval' }
         });
       } else {
         await prisma.approval.create({
@@ -91,7 +127,7 @@ export class QuotationsService {
             quotationId: id,
             rfqId: quotation.rfqId,
             vendorId: quotation.vendorId,
-            status: 'pending',
+            status: ApprovalStatus.PENDING,
             remarks: 'Resubmitted for approval'
           }
         });
@@ -100,9 +136,13 @@ export class QuotationsService {
     return quotation;
   }
 
-  async findByRFQ(rfqId: string) {
+  async findByRFQ(rfqId: string, user?: UserPayload) {
+    const where: any = { rfqId };
+    if (user?.role === Roles.VENDOR) {
+      where.vendor = { userId: user.id };
+    }
     return prisma.quotation.findMany({
-      where: { rfqId },
+      where,
       include: {
         vendor: { select: { id: true, companyName: true, email: true, rating: true } },
         items: true,
@@ -112,9 +152,13 @@ export class QuotationsService {
     });
   }
 
-  async findByVendor(vendorId: string) {
+  async findByVendor(vendorId: string, user?: UserPayload) {
+    const where: any = { vendorId };
+    if (user?.role === Roles.VENDOR) {
+      where.vendor = { userId: user.id };
+    }
     return prisma.quotation.findMany({
-      where: { vendorId },
+      where,
       include: {
         rfq: { select: { id: true, title: true, deadline: true } },
         items: true
@@ -123,11 +167,14 @@ export class QuotationsService {
     });
   }
 
-  async findAll(query: { status?: string; vendorId?: string; rfqId?: string }) {
+  async findAll(query: { status?: string; vendorId?: string; rfqId?: string }, user?: UserPayload) {
     const where: any = {};
-    if (query.status) where.status = query.status;
+    if (query.status) where.status = normalizeStatus(query.status);
     if (query.vendorId) where.vendorId = query.vendorId;
     if (query.rfqId) where.rfqId = query.rfqId;
+    if (user?.role === Roles.VENDOR) {
+      where.vendor = { userId: user.id };
+    }
     return prisma.quotation.findMany({
       where,
       include: {

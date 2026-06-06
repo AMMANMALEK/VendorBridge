@@ -29,7 +29,7 @@ export const createRFQ = async (req: AuthRequest, res: Response, next: NextFunct
 
 export const getRFQs = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const rfqs = await rfqsService.findAll(req.query as any);
+    const rfqs = await rfqsService.findAll(req.query as any, req.user);
     res.json(rfqs);
   } catch (error) {
     next(error);
@@ -38,7 +38,7 @@ export const getRFQs = async (req: AuthRequest, res: Response, next: NextFunctio
 
 export const getRFQById = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const rfq = await rfqsService.findById(req.params.id as string);
+    const rfq = await rfqsService.findById(req.params.id as string, req.user);
     res.json(rfq);
   } catch (error) {
     next(error);
@@ -75,24 +75,7 @@ export const uploadAttachment = async (req: AuthRequest, res: Response, next: Ne
 
 export const assignVendors = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const vendorIds: string[] = req.body.vendorIds;
-    const rfq = await prisma.rfq.findUnique({
-      where: { id: req.params.id as string },
-      include: { assignedVendors: true }
-    });
-    if (!rfq) { res.status(404).json({ message: 'RFQ not found' }); return; }
-
-    const existingIds = rfq.assignedVendors.map(v => v.vendorId);
-    const newIds = vendorIds.filter(v => !existingIds.includes(v));
-
-    for (const vendorId of newIds) {
-      await prisma.rfqVendor.create({ data: { rfqId: req.params.id as string, vendorId } });
-    }
-
-    const updated = await prisma.rfq.findUnique({
-      where: { id: req.params.id as string },
-      include: { assignedVendors: { include: { vendor: true } } }
-    });
+    const updated = await rfqsService.assignVendors(req.params.id as string, req.body.vendorIds, req.user!.id);
     res.json(updated);
   } catch (error) {
     next(error);

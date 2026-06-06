@@ -1,10 +1,11 @@
 import prisma from '../../config/prisma';
 import { PurchaseOrdersService } from '../purchase-orders/purchaseOrders.service';
+import { ApprovalStatus, normalizeStatus, QuotationStatus } from '../../constants';
 
 export class ApprovalsService {
   async getPending() {
     return prisma.approval.findMany({
-      where: { status: 'pending' },
+      where: { status: ApprovalStatus.PENDING },
       include: {
         quotation: { include: { items: true } },
         rfq: { select: { id: true, title: true } },
@@ -17,7 +18,7 @@ export class ApprovalsService {
 
   async findAll(query: { status?: string; vendorId?: string }) {
     const where: any = {};
-    if (query.status) where.status = query.status;
+    if (query.status) where.status = normalizeStatus(query.status);
     if (query.vendorId) where.vendorId = query.vendorId;
     return prisma.approval.findMany({
       where,
@@ -44,11 +45,17 @@ export class ApprovalsService {
     }
 
     if (!quotation) throw { statusCode: 404, message: 'Quotation not found' };
+    if (approval && approval.status !== ApprovalStatus.PENDING) {
+      throw { statusCode: 400, message: `Approval is already ${approval.status}` };
+    }
+    if (![QuotationStatus.PENDING, QuotationStatus.REVISED].includes(quotation.status as any)) {
+      throw { statusCode: 400, message: `Quotation cannot be approved from status ${quotation.status}` };
+    }
 
     if (approval) {
       approval = await prisma.approval.update({
         where: { id: approval.id },
-        data: { status: 'approved', approvedById: userId, remarks: remarks || 'Approved', reviewedAt: new Date() }
+        data: { status: ApprovalStatus.APPROVED, approvedById: userId, remarks: remarks || 'Approved', reviewedAt: new Date() }
       });
     } else {
       approval = await prisma.approval.create({
@@ -56,7 +63,7 @@ export class ApprovalsService {
           quotationId: quotation.id,
           rfqId: quotation.rfqId,
           vendorId: quotation.vendorId,
-          status: 'approved',
+          status: ApprovalStatus.APPROVED,
           approvedById: userId,
           remarks: remarks || 'Approved',
           reviewedAt: new Date()
@@ -64,7 +71,28 @@ export class ApprovalsService {
       });
     }
 
-    await prisma.quotation.update({ where: { id: quotation.id }, data: { status: 'Approved' } });
+    await prisma.quotation.update({ where: { id: quotation.id }, data: { status: QuotationStatus.APPROVED } });
+    await prisma.quotation.updateMany({
+      where: {
+        rfqId: quotation.rfqId,
+        id: { not: quotation.id },
+        status: { in: [QuotationStatus.PENDING, QuotationStatus.REVISED] }
+      },
+      data: { status: QuotationStatus.REJECTED }
+    });
+    await prisma.approval.updateMany({
+      where: {
+        rfqId: quotation.rfqId,
+        quotationId: { not: quotation.id },
+        status: ApprovalStatus.PENDING
+      },
+      data: {
+        status: ApprovalStatus.REJECTED,
+        remarks: 'Another quotation was approved for this RFQ',
+        reviewedAt: new Date(),
+        approvedById: userId
+      }
+    });
 
     // Generate PO automatically when Quotation is Approved
     try {
@@ -109,11 +137,17 @@ export class ApprovalsService {
     }
 
     if (!quotation) throw { statusCode: 404, message: 'Quotation not found' };
+    if (approval && approval.status !== ApprovalStatus.PENDING) {
+      throw { statusCode: 400, message: `Approval is already ${approval.status}` };
+    }
+    if (![QuotationStatus.PENDING, QuotationStatus.REVISED].includes(quotation.status as any)) {
+      throw { statusCode: 400, message: `Quotation cannot be rejected from status ${quotation.status}` };
+    }
 
     if (approval) {
       approval = await prisma.approval.update({
         where: { id: approval.id },
-        data: { status: 'rejected', approvedById: userId, remarks: remarks || 'Rejected', reviewedAt: new Date() }
+        data: { status: ApprovalStatus.REJECTED, approvedById: userId, remarks: remarks || 'Rejected', reviewedAt: new Date() }
       });
     } else {
       approval = await prisma.approval.create({
@@ -121,7 +155,7 @@ export class ApprovalsService {
           quotationId: quotation.id,
           rfqId: quotation.rfqId,
           vendorId: quotation.vendorId,
-          status: 'rejected',
+          status: ApprovalStatus.REJECTED,
           approvedById: userId,
           remarks: remarks || 'Rejected',
           reviewedAt: new Date()
@@ -129,7 +163,7 @@ export class ApprovalsService {
       });
     }
 
-    await prisma.quotation.update({ where: { id: quotation.id }, data: { status: 'Rejected' } });
+    await prisma.quotation.update({ where: { id: quotation.id }, data: { status: QuotationStatus.REJECTED } });
 
     await prisma.activity.create({
       data: {

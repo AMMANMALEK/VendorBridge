@@ -15,7 +15,7 @@ export const createVendor = async (req: AuthRequest, res: Response, next: NextFu
 
 export const getVendors = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const vendors = await vendorsService.findAll(req.query as any);
+    const vendors = await vendorsService.findAll(req.query as any, req.user);
     res.json(vendors);
   } catch (error) {
     next(error);
@@ -24,7 +24,7 @@ export const getVendors = async (req: AuthRequest, res: Response, next: NextFunc
 
 export const getVendorById = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const vendor = await vendorsService.findById(req.params.id as string);
+    const vendor = await vendorsService.findById(req.params.id as string, req.user);
     res.json(vendor);
   } catch (error) {
     next(error);

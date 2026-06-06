@@ -6,7 +6,7 @@ const activityLogsService = new ActivityLogsService();
 
 export const getActivities = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const activities = await activityLogsService.findAll(req.query.type as string);
+    const activities = await activityLogsService.findAll(req.query.type as string, req.user);
     res.json(activities);
   } catch (error) {
     next(error);

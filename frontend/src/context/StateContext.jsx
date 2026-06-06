@@ -59,8 +59,13 @@ function normalizeRFQ(rfq) {
   const assignedVendors = Array.isArray(rfq.assignedVendors)
     ? rfq.assignedVendors.map(av => normalizeVendor(av.vendor || av))
     : [];
+  const rawStatus = String(rfq.status || '').toLowerCase();
+  const status = rawStatus
+    ? rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1)
+    : 'Draft';
   return {
     ...rfq,
+    status,
     assignedVendors,
     items: Array.isArray(rfq.items)
       ? rfq.items.map(item => ({ ...item, name: item.productName || item.name || 'Item' }))
@@ -230,26 +235,43 @@ export const StateProvider = ({ children }) => {
     setLogs(prev => [newLog, ...prev]);
   };
 
-  const refreshData = async (authToken) => {
+  const refreshData = async (authToken, currentUser) => {
     if (!authToken) return;
     try {
-      const [usersData, vendorsData, rfqsData, quotationsData, approvalsData, posData, invoicesData] = await Promise.all([
-        apiFetch('/users', authToken).catch(() => []),
-        apiFetch('/vendors', authToken).catch(() => []),
-        apiFetch('/rfqs', authToken).catch(() => []),
-        apiFetch('/quotations', authToken).catch(() => []),
-        apiFetch('/approvals', authToken).catch(() => []),
-        apiFetch('/purchase-orders', authToken).catch(() => []),
-        apiFetch('/invoices', authToken).catch(() => [])
-      ]);
+      const requests = [];
+      const responses = {
+        usersData: [],
+        vendorsData: [],
+        rfqsData: [],
+        quotationsData: [],
+        approvalsData: [],
+        posData: [],
+        invoicesData: []
+      };
 
-      setUsers(Array.isArray(usersData) ? usersData : []);
-      setVendors(normalizeResponse(vendorsData, normalizeVendor));
-      setRfqs(normalizeResponse(rfqsData, normalizeRFQ));
-      setQuotations(normalizeResponse(quotationsData, normalizeQuotation));
-      setApprovals(normalizeResponse(approvalsData, normalizeApproval));
-      setPos(normalizeResponse(posData, normalizePurchaseOrder));
-      setInvoices(normalizeResponse(invoicesData, normalizeInvoice));
+      if (currentUser?.role === 'admin') {
+        requests.push(apiFetch('/users', authToken).then(data => { responses.usersData = data; }).catch(() => []));
+      }
+
+      requests.push(apiFetch('/vendors', authToken).then(data => { responses.vendorsData = data; }).catch(() => []));
+      requests.push(apiFetch('/rfqs', authToken).then(data => { responses.rfqsData = data; }).catch(() => []));
+      requests.push(apiFetch('/quotations', authToken).then(data => { responses.quotationsData = data; }).catch(() => []));
+      requests.push(apiFetch('/purchase-orders', authToken).then(data => { responses.posData = data; }).catch(() => []));
+      requests.push(apiFetch('/invoices', authToken).then(data => { responses.invoicesData = data; }).catch(() => []));
+
+      if (currentUser?.role === 'admin' || currentUser?.role === 'manager') {
+        requests.push(apiFetch('/approvals', authToken).then(data => { responses.approvalsData = data; }).catch(() => []));
+      }
+
+      await Promise.all(requests);
+
+      setUsers(Array.isArray(responses.usersData) ? responses.usersData : []);
+      setVendors(normalizeResponse(responses.vendorsData, normalizeVendor));
+      setRfqs(normalizeResponse(responses.rfqsData, normalizeRFQ));
+      setQuotations(normalizeResponse(responses.quotationsData, normalizeQuotation));
+      setApprovals(normalizeResponse(responses.approvalsData, normalizeApproval));
+      setPos(normalizeResponse(responses.posData, normalizePurchaseOrder));
+      setInvoices(normalizeResponse(responses.invoicesData, normalizeInvoice));
     } catch (error) {
       console.error('Failed to refresh data:', error);
     }
@@ -260,7 +282,7 @@ export const StateProvider = ({ children }) => {
   useEffect(() => {
     if (token && user) {
       // Data is stale; kick off a background refresh but don't block navigation
-      refreshData(token).finally(() => setIsLoading(false));
+      refreshData(token, user).finally(() => setIsLoading(false));
     } else {
       setIsLoading(false);
     }
@@ -273,7 +295,7 @@ export const StateProvider = ({ children }) => {
     setToken(response.token);
     setUser(response.user);
     // Refresh data in background after login — don't block navigation
-    refreshData(response.token);
+    refreshData(response.token, response.user);
     return response.user;
   };
 

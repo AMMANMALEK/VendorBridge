@@ -1,10 +1,41 @@
 import prisma from '../../config/prisma';
+import { ApprovalStatus, Roles, RfqStatus } from '../../constants';
+import { UserPayload } from '../../types';
 
 export class DashboardService {
-  async getSummary() {
+  async getSummary(user?: UserPayload) {
+    if (user?.role === Roles.VENDOR) {
+      const vendor = await prisma.vendor.findFirst({ where: { userId: user.id } });
+      if (!vendor) return { pendingApprovals: 0, activeRfqs: 0, vendorCount: 0, quotationCount: 0, recentPurchaseOrders: [], recentInvoices: [] };
+
+      const [activeRfqs, recentPOs, recentInvoices, quotationCount] = await Promise.all([
+        prisma.rfq.count({
+          where: {
+            status: { in: [RfqStatus.DRAFT, RfqStatus.OPEN] },
+            assignedVendors: { some: { vendorId: vendor.id } }
+          }
+        }),
+        prisma.purchaseOrder.findMany({
+          where: { vendorId: vendor.id },
+          include: { vendor: { select: { companyName: true } } },
+          orderBy: { createdAt: 'desc' },
+          take: 5
+        }),
+        prisma.invoice.findMany({
+          where: { vendorId: vendor.id },
+          include: { vendor: { select: { companyName: true } } },
+          orderBy: { createdAt: 'desc' },
+          take: 5
+        }),
+        prisma.quotation.count({ where: { vendorId: vendor.id } })
+      ]);
+
+      return { pendingApprovals: 0, activeRfqs, vendorCount: 1, quotationCount, recentPurchaseOrders: recentPOs, recentInvoices };
+    }
+
     const [pendingApprovals, activeRfqs, recentPOs, recentInvoices, vendorCount, quotationCount] = await Promise.all([
-      prisma.approval.count({ where: { status: 'pending' } }),
-      prisma.rfq.count({ where: { status: { in: ['Draft', 'Open'] } } }),
+      prisma.approval.count({ where: { status: ApprovalStatus.PENDING } }),
+      prisma.rfq.count({ where: { status: { in: [RfqStatus.DRAFT, RfqStatus.OPEN] } } }),
       prisma.purchaseOrder.findMany({
         include: { vendor: { select: { companyName: true } } },
         orderBy: { createdAt: 'desc' },
@@ -38,8 +69,8 @@ export class DashboardService {
       }),
       prisma.quotation.count(),
       prisma.approval.count(),
-      prisma.approval.count({ where: { status: 'approved' } }),
-      prisma.approval.count({ where: { status: 'rejected' } })
+      prisma.approval.count({ where: { status: ApprovalStatus.APPROVED } }),
+      prisma.approval.count({ where: { status: ApprovalStatus.REJECTED } })
     ]);
 
     return {

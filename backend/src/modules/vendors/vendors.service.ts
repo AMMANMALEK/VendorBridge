@@ -1,7 +1,11 @@
 import prisma from '../../config/prisma';
+import { Roles } from '../../constants';
+import { UserPayload } from '../../types';
+import { requireFields } from '../../utils/validation';
 
 export class VendorsService {
   async create(data: any) {
+    requireFields(data, ['companyName', 'contactPerson', 'email', 'phone']);
     const vendor = await prisma.vendor.create({ data });
     await prisma.activity.create({
       data: {
@@ -15,8 +19,9 @@ export class VendorsService {
     return vendor;
   }
 
-  async findAll(query: { search?: string; category?: string; status?: string }) {
+  async findAll(query: { search?: string; category?: string; status?: string }, user?: UserPayload) {
     const where: any = {};
+    if (user?.role === Roles.VENDOR) where.userId = user.id;
     if (query.search) {
       where.OR = [
         { companyName: { contains: query.search, mode: 'insensitive' } },
@@ -29,13 +34,16 @@ export class VendorsService {
     return prisma.vendor.findMany({ where, orderBy: { createdAt: 'desc' } });
   }
 
-  async findById(id: string) {
-    const vendor = await prisma.vendor.findUnique({ where: { id } });
+  async findById(id: string, user?: UserPayload) {
+    const where: any = { id };
+    if (user?.role === Roles.VENDOR) where.userId = user.id;
+    const vendor = await prisma.vendor.findFirst({ where });
     if (!vendor) throw { statusCode: 404, message: 'Vendor not found' };
     return vendor;
   }
 
   async update(id: string, data: any) {
+    if (data.email === '') throw { statusCode: 400, message: 'email cannot be empty' };
     const vendor = await prisma.vendor.update({ where: { id }, data });
 
     // If vendor status is updated, automatically update the user account activation status

@@ -1,6 +1,14 @@
 import prisma from '../../config/prisma';
+import { ApprovalStatus, normalizeStatus, Roles } from '../../constants';
+import { UserPayload } from '../../types';
 
 export class PurchaseOrdersService {
+  private generatePoNumber() {
+    const timestamp = Date.now().toString(36).toUpperCase();
+    const random = Math.random().toString(36).slice(2, 6).toUpperCase();
+    return `PO-${timestamp}-${random}`;
+  }
+
   async generate(quotationId: string, userId: string) {
     const quotation = await prisma.quotation.findUnique({
       where: { id: quotationId },
@@ -9,12 +17,22 @@ export class PurchaseOrdersService {
     if (!quotation) throw { statusCode: 404, message: 'Quotation not found' };
 
     const approval = await prisma.approval.findFirst({
-      where: { quotationId, status: 'approved' }
+      where: { quotationId, status: ApprovalStatus.APPROVED }
     });
     if (!approval) throw { statusCode: 400, message: 'Quotation must be approved before generating PO' };
 
-    const poCount = await prisma.purchaseOrder.count();
-    const poNumber = `PO-${String(poCount + 1).padStart(6, '0')}`;
+    const existingPO = await prisma.purchaseOrder.findFirst({
+      where: { quotationId },
+      include: { items: true, vendor: true }
+    });
+    if (existingPO) return existingPO;
+
+    let poNumber = this.generatePoNumber();
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const exists = await prisma.purchaseOrder.findUnique({ where: { poNumber } });
+      if (!exists) break;
+      poNumber = this.generatePoNumber();
+    }
 
     const po = await prisma.purchaseOrder.create({
       data: {
@@ -65,9 +83,12 @@ export class PurchaseOrdersService {
     return po;
   }
 
-  async findAll(status?: string) {
+  async findAll(status?: string, user?: UserPayload) {
     const where: any = {};
-    if (status) where.status = status;
+    if (status) where.status = normalizeStatus(status);
+    if (user?.role === Roles.VENDOR) {
+      where.vendor = { userId: user.id };
+    }
     return prisma.purchaseOrder.findMany({
       where,
       include: {
@@ -80,9 +101,13 @@ export class PurchaseOrdersService {
     });
   }
 
-  async findById(id: string) {
-    const po = await prisma.purchaseOrder.findUnique({
-      where: { id },
+  async findById(id: string, user?: UserPayload) {
+    const where: any = { id };
+    if (user?.role === Roles.VENDOR) {
+      where.vendor = { userId: user.id };
+    }
+    const po = await prisma.purchaseOrder.findFirst({
+      where,
       include: {
         vendor: true,
         rfq: { select: { id: true, title: true, deadline: true } },

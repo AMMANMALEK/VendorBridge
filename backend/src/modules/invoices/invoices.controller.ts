@@ -15,7 +15,7 @@ export const generateInvoice = async (req: AuthRequest, res: Response, next: Nex
 
 export const getInvoiceById = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const invoice = await invoicesService.findById(req.params.id as string);
+    const invoice = await invoicesService.findById(req.params.id as string, req.user);
     res.json(invoice);
   } catch (error) {
     next(error);
@@ -24,7 +24,7 @@ export const getInvoiceById = async (req: AuthRequest, res: Response, next: Next
 
 export const getInvoices = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const invoices = await invoicesService.findAll(req.query as any);
+    const invoices = await invoicesService.findAll(req.query as any, req.user);
     res.json(invoices);
   } catch (error) {
     next(error);
@@ -42,7 +42,7 @@ export const payInvoice = async (req: AuthRequest, res: Response, next: NextFunc
 
 export const getInvoicePDF = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const pdf = await invoicesService.getPDF(req.params.id as string);
+    const pdf = await invoicesService.getPDF(req.params.id as string, req.user);
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename=invoice.pdf`);
     res.send(pdf);
@@ -62,7 +62,7 @@ export const emailInvoice = async (req: AuthRequest, res: Response, next: NextFu
 
 export const printInvoice = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const pdf = await invoicesService.print(req.params.id as string);
+    const pdf = await invoicesService.print(req.params.id as string, req.user);
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename=invoice.pdf`);
     res.send(pdf);

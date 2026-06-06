@@ -6,7 +6,7 @@ const quotationsService = new QuotationsService();
 
 export const submitQuotation = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const quotation = await quotationsService.submit(req.body, req.user!.id);
+    const quotation = await quotationsService.submit(req.body, req.user!);
     res.status(201).json(quotation);
   } catch (error) {
     next(error);
@@ -15,7 +15,7 @@ export const submitQuotation = async (req: AuthRequest, res: Response, next: Nex
 
 export const updateQuotation = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const quotation = await quotationsService.update(req.params.id as string, req.body);
+    const quotation = await quotationsService.update(req.params.id as string, req.body, req.user!);
     res.json(quotation);
   } catch (error) {
     next(error);
@@ -24,7 +24,7 @@ export const updateQuotation = async (req: AuthRequest, res: Response, next: Nex
 
 export const getAllQuotations = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const quotations = await quotationsService.findAll(req.query as any);
+    const quotations = await quotationsService.findAll(req.query as any, req.user);
     res.json(quotations);
   } catch (error) {
     next(error);
@@ -33,7 +33,7 @@ export const getAllQuotations = async (req: AuthRequest, res: Response, next: Ne
 
 export const getQuotationsByRFQ = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const quotations = await quotationsService.findByRFQ(req.params.id as string);
+    const quotations = await quotationsService.findByRFQ(req.params.id as string, req.user);
     res.json(quotations);
   } catch (error) {
     next(error);
@@ -42,7 +42,7 @@ export const getQuotationsByRFQ = async (req: AuthRequest, res: Response, next: 
 
 export const getQuotationsByVendor = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const quotations = await quotationsService.findByVendor(req.params.id as string);
+    const quotations = await quotationsService.findByVendor(req.params.id as string, req.user);
     res.json(quotations);
   } catch (error) {
     next(error);

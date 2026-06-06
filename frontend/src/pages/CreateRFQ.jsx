@@ -98,20 +98,24 @@ const CreateRFQ = () => {
   };
   const removeAttachment = (name) => setAttachments(prev => prev.filter(a => a !== name));
 
-  const buildAndSave = (isDraft) => {
+  const buildAndSave = async (isDraft) => {
     if (!rfqDetails.title || !rfqDetails.deadline) return;
     if (!isDraft && assignedVendorIds.length === 0) {
       alert('Please assign at least one vendor before sending.');
       return;
     }
     const assignedVendors = activeVendors.filter(v => assignedVendorIds.includes(v.id)).map(v => ({ id: v.id, name: v.name }));
-    addRFQ({ ...rfqDetails, items, assignedVendors, attachments, isDraft });
-    if (isDraft) {
-      alert('RFQ saved as draft. Vendors have not been notified.');
-      navigate('/dashboard');
-    } else {
-      alert(`RFQ published and sent to ${assignedVendors.length} vendor(s)! Awaiting vendor bids/quotations.`);
-      navigate('/dashboard');
+    try {
+      await addRFQ({ ...rfqDetails, items, assignedVendors, attachments, isDraft });
+      if (isDraft) {
+        alert('RFQ saved as draft. Vendors have not been notified.');
+        navigate('/dashboard');
+      } else {
+        alert(`RFQ published and sent to ${assignedVendors.length} vendor(s)! Awaiting vendor bids/quotations.`);
+        navigate('/dashboard');
+      }
+    } catch (error) {
+      alert(error.message || 'Unable to create RFQ. Please check the details and try again.');
     }
   };
 

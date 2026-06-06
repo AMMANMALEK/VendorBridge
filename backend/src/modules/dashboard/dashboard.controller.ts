@@ -6,7 +6,7 @@ const dashboardService = new DashboardService();
 
 export const getSummary = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const summary = await dashboardService.getSummary();
+    const summary = await dashboardService.getSummary(req.user);
     res.json(summary);
   } catch (error) {
     next(error);

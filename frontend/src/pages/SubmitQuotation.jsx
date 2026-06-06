@@ -98,6 +98,12 @@ const SubmitQuotation = () => {
   const [selectedRFQ, setSelectedRFQ] = useState(myRFQs[0] || null);
   const [toast, setToast] = useState('');
 
+  useEffect(() => {
+    if (!selectedRFQ && myRFQs.length > 0) {
+      setSelectedRFQ(myRFQs[0]);
+    }
+  }, [myRFQs.length, selectedRFQ]);
+
   // Per-line-item pricing state
   const buildInitialLineItems = (rfq) => {
     if (!rfq?.items || !Array.isArray(rfq.items)) return [];

@@ -1,17 +1,38 @@
 import prisma from '../../config/prisma';
 import { generateInvoicePDF } from '../../utils/pdfGenerator';
 import { sendInvoiceEmail } from '../../services/emailService';
+import { InvoiceStatus, normalizeStatus, PurchaseOrderStatus, Roles } from '../../constants';
+import { UserPayload } from '../../types';
 
 export class InvoicesService {
+  private generateInvoiceNumber() {
+    const timestamp = Date.now().toString(36).toUpperCase();
+    const random = Math.random().toString(36).slice(2, 6).toUpperCase();
+    return `INV-${timestamp}-${random}`;
+  }
+
   async generate(poId: string, userId: string) {
     const po = await prisma.purchaseOrder.findUnique({
       where: { id: poId },
       include: { items: true, vendor: true }
     });
     if (!po) throw { statusCode: 404, message: 'Purchase order not found' };
+    if ([PurchaseOrderStatus.CANCELLED, PurchaseOrderStatus.PAID].includes(po.status as any)) {
+      throw { statusCode: 400, message: `Invoice cannot be generated from PO status ${po.status}` };
+    }
 
-    const invCount = await prisma.invoice.count();
-    const invoiceNumber = `INV-${String(invCount + 1).padStart(6, '0')}`;
+    const existingInvoice = await prisma.invoice.findFirst({
+      where: { purchaseOrderId: poId },
+      include: { items: true, vendor: true, purchaseOrder: true }
+    });
+    if (existingInvoice) return existingInvoice;
+
+    let invoiceNumber = this.generateInvoiceNumber();
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const exists = await prisma.invoice.findUnique({ where: { invoiceNumber } });
+      if (!exists) break;
+      invoiceNumber = this.generateInvoiceNumber();
+    }
 
     const invoice = await prisma.invoice.create({
       data: {
@@ -35,7 +56,7 @@ export class InvoicesService {
       include: { items: true, vendor: true, purchaseOrder: true }
     });
 
-    await prisma.purchaseOrder.update({ where: { id: poId }, data: { status: 'completed' } });
+    await prisma.purchaseOrder.update({ where: { id: poId }, data: { status: PurchaseOrderStatus.COMPLETED } });
 
     await prisma.activity.create({
       data: {
@@ -59,19 +80,29 @@ export class InvoicesService {
     return invoice;
   }
 
-  async findById(id: string) {
-    const invoice = await prisma.invoice.findUnique({
-      where: { id },
+  async findById(id: string, user?: UserPayload) {
+    const where: any = { id };
+    if (user?.role === Roles.VENDOR) {
+      where.vendor = { userId: user.id };
+    }
+    const invoice = await prisma.invoice.findFirst({
+      where,
       include: { vendor: true, purchaseOrder: true, items: true, generatedBy: { select: { id: true, name: true, email: true } } }
     });
     if (!invoice) throw { statusCode: 404, message: 'Invoice not found' };
+    if ([InvoiceStatus.PAID, InvoiceStatus.CANCELLED].includes(invoice.status as any)) {
+      throw { statusCode: 400, message: `Invoice is already ${invoice.status}` };
+    }
     return invoice;
   }
 
-  async findAll(query: { status?: string; vendorId?: string }) {
+  async findAll(query: { status?: string; vendorId?: string }, user?: UserPayload) {
     const where: any = {};
-    if (query.status) where.status = query.status;
+    if (query.status) where.status = normalizeStatus(query.status);
     if (query.vendorId) where.vendorId = query.vendorId;
+    if (user?.role === Roles.VENDOR) {
+      where.vendor = { userId: user.id };
+    }
     return prisma.invoice.findMany({
       where,
       include: { vendor: true, purchaseOrder: true, items: true, generatedBy: { select: { id: true, name: true, email: true } } },
@@ -85,15 +116,18 @@ export class InvoicesService {
       include: { purchaseOrder: true }
     });
     if (!invoice) throw { statusCode: 404, message: 'Invoice not found' };
+    if ([InvoiceStatus.PAID, InvoiceStatus.CANCELLED].includes(invoice.status as any)) {
+      throw { statusCode: 400, message: `Invoice cannot be emailed from status ${invoice.status}` };
+    }
 
     const paidInvoice = await prisma.invoice.update({
       where: { id },
-      data: { status: 'paid', paidAt: new Date() }
+      data: { status: InvoiceStatus.PAID, paidAt: new Date() }
     });
 
     await prisma.purchaseOrder.update({
       where: { id: invoice.purchaseOrderId },
-      data: { status: 'paid' }
+      data: { status: PurchaseOrderStatus.PAID }
     });
 
     await prisma.activity.create({
@@ -122,9 +156,13 @@ export class InvoicesService {
     return paidInvoice;
   }
 
-  async getPDF(id: string) {
-    const invoice = await prisma.invoice.findUnique({
-      where: { id },
+  async getPDF(id: string, user?: UserPayload) {
+    const where: any = { id };
+    if (user?.role === Roles.VENDOR) {
+      where.vendor = { userId: user.id };
+    }
+    const invoice = await prisma.invoice.findFirst({
+      where,
       include: { vendor: true, purchaseOrder: true, items: true }
     });
     if (!invoice) throw { statusCode: 404, message: 'Invoice not found' };
@@ -141,7 +179,7 @@ export class InvoicesService {
     const pdf = await generateInvoicePDF(invoice, invoice.purchaseOrder, invoice.vendor);
     await sendInvoiceEmail(invoice.vendor.email, invoice, pdf);
 
-    await prisma.invoice.update({ where: { id }, data: { status: 'sent' } });
+    await prisma.invoice.update({ where: { id }, data: { status: InvoiceStatus.SENT } });
 
     await prisma.activity.create({
       data: {
@@ -165,9 +203,13 @@ export class InvoicesService {
     return { message: 'Invoice emailed successfully' };
   }
 
-  async print(id: string) {
-    const invoice = await prisma.invoice.findUnique({
-      where: { id },
+  async print(id: string, user?: UserPayload) {
+    const where: any = { id };
+    if (user?.role === Roles.VENDOR) {
+      where.vendor = { userId: user.id };
+    }
+    const invoice = await prisma.invoice.findFirst({
+      where,
       include: { vendor: true, purchaseOrder: true, items: true }
     });
     if (!invoice) throw { statusCode: 404, message: 'Invoice not found' };

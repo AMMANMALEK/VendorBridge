@@ -17,13 +17,16 @@ export const protect = async (req: AuthRequest, res: Response, next: NextFunctio
     }
 
     const decoded = jwt.verify(token, config.jwtSecret) as { id: string };
-    const user = await prisma.user.findUnique({ where: { id: decoded.id }, select: { id: true, isActive: true } });
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.id },
+      select: { id: true, name: true, email: true, role: true, isActive: true }
+    });
     if (!user || !user.isActive) {
       res.status(403).json({ message: 'Account is not active' });
       return;
     }
 
-    req.user = { id: decoded.id } as UserPayload;
+    req.user = { id: user.id, name: user.name, email: user.email, role: user.role } as UserPayload;
     next();
   } catch (error) {
     res.status(401).json({ message: 'Not authorized, token invalid' });
